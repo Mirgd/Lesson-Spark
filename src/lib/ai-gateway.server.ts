@@ -125,7 +125,7 @@ async function callGemini(
 
   const model =
     process.env["GEMINI_MODEL"]?.trim() ||
-    "gemini-2.5-flash";
+    "gemini-3.6-flash";
 
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",

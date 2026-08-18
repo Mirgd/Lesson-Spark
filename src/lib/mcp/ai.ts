@@ -20,7 +20,7 @@ export async function callGateway(
   if (geminiKey) {
     const model =
       process.env.GEMINI_MODEL?.trim() ||
-      "gemini-2.5-flash";
+      "gemini-3.6-flash";
 
     const res = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
