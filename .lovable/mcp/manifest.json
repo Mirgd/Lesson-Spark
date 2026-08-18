@@ -1,0 +1,193 @@
+{
+  "version": 1,
+  "sdk_version": "0.24.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://msxsozadpufbbwpeorhd.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "rumooz-deep-learning-mcp",
+      "version": "0.1.0",
+      "title": "المدرسة الرمز · التعلم العميق"
+    },
+    "tools": [
+      {
+        "name": "plan_5e_lesson",
+        "title": "Plan a 5E lesson",
+        "description": "Generate a complete 60-minute STEM lesson plan following the 5E deep-learning model (Engage, Explore, Explain, Elaborate, Evaluate) in Arabic, with a teacher script and student-facing phrasing for each phase plus a homework challenge.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "subject": {
+              "type": "string",
+              "minLength": 1,
+              "description": "School subject, e.g. 'العلوم'."
+            },
+            "grade": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Grade level, e.g. 'الصف السادس الابتدائي'."
+            },
+            "topic": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Lesson topic."
+            },
+            "objectives": {
+              "type": "string",
+              "description": "Learning objectives in the student's voice. Pass an empty string if unknown."
+            }
+          },
+          "required": [
+            "subject",
+            "grade",
+            "topic",
+            "objectives"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "suggest_phase_activity",
+        "title": "Suggest an activity for one 5E phase",
+        "description": "Suggest a hands-on classroom activity for a single phase of the 5E model, written twice: once as teacher instructions and once in direct student-facing Arabic.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "subject": {
+              "type": "string",
+              "minLength": 1,
+              "description": "School subject."
+            },
+            "grade": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Grade level."
+            },
+            "topic": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Lesson topic."
+            },
+            "phase": {
+              "type": "string",
+              "enum": [
+                "engage",
+                "explore",
+                "explain",
+                "elaborate",
+                "evaluate"
+              ],
+              "description": "Which 5E phase the activity is for."
+            },
+            "duration": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 60,
+              "description": "Phase length in minutes."
+            }
+          },
+          "required": [
+            "subject",
+            "grade",
+            "topic",
+            "phase",
+            "duration"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "suggest_homework",
+        "title": "Suggest a home challenge",
+        "description": "Suggest an Extend-style home challenge for a lesson: a real-world task doable in 20-30 minutes that provokes thinking rather than memorization.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "subject": {
+              "type": "string",
+              "minLength": 1,
+              "description": "School subject."
+            },
+            "grade": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Grade level."
+            },
+            "topic": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Lesson topic."
+            },
+            "objectives": {
+              "type": "string",
+              "description": "Learning objectives. Pass an empty string if unknown."
+            }
+          },
+          "required": [
+            "subject",
+            "grade",
+            "topic",
+            "objectives"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_lesson_images",
+        "title": "Search teaching images",
+        "description": "Search Unsplash for landscape, classroom-safe photos to illustrate a lesson phase. Returns image URLs with attribution.",
+        "annotations": {
+          "readOnlyHint": true,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "query": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Search terms in English, e.g. 'photosynthesis leaf'."
+            },
+            "perPage": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 12,
+              "description": "How many images to return (1-12)."
+            }
+          },
+          "required": [
+            "query",
+            "perPage"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}

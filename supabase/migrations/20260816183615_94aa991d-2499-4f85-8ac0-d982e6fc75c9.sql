@@ -1,0 +1,1 @@
+ALTER TABLE public.teachers ADD COLUMN IF NOT EXISTS role text NOT NULL DEFAULT 'teacher';

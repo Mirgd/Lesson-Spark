@@ -1,0 +1,1 @@
+delete from auth.users where email = 'probe.test.8841@example.com';

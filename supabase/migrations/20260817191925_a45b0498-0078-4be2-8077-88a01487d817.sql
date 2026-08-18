@@ -1,0 +1,1 @@
+GRANT EXECUTE ON FUNCTION private.is_school_admin_of(uuid, uuid) TO authenticated, service_role;
