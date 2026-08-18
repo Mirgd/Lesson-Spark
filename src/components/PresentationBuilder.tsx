@@ -62,21 +62,30 @@ export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
       setTotal(pages.length);
       setStatus("جارٍ تحليل محتوى الصفحات...");
 
-      const analyzed = await pool(pages, 3, async (p) => {
+      const analyzed: AnalyzedPage[] = [];
 
-        const r = await analyzePageForPhase({
-          data: {
-            imageBase64: p.base64,
-            pageNumber: p.page,
-            topic: plan.topic,
-            subject: plan.subject,
-            lang: planLang(plan),
-          },
-        });
-        setDone((d) => d + 1);
-        setStatus(`جارٍ تحليل صفحة ${p.page}...`);
-        return r as AnalyzedPage;
-      });
+for (const p of pages) {
+  if (getCurrentFileId() !== fileId) return;
+
+  setStatus(`جارٍ تحليل صفحة ${p.page} من ${pages.length}...`);
+
+  const r = await analyzePageForPhase({
+    data: {
+      imageBase64: p.base64,
+      pageNumber: p.page,
+      topic: plan.topic,
+      subject: plan.subject,
+      lang: planLang(plan),
+    },
+  });
+
+  analyzed.push(r as AnalyzedPage);
+
+  setDone((d) => d + 1);
+
+  // مهلة قصيرة لتقليل احتمال تجاوز حد Gemini المجاني
+  await new Promise((resolve) => setTimeout(resolve, 1500));
+}
 
       if (getCurrentFileId() !== fileId) return;
       const built = buildPresentation(analyzed, plan);

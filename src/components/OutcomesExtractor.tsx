@@ -15,6 +15,7 @@ export function OutcomesExtractor({
   topic,
   curriculum,
   lang,
+  existingOutcomes,
   onApply,
 }: {
   subject: string;
@@ -22,6 +23,7 @@ export function OutcomesExtractor({
   topic: string;
   curriculum: string;
   lang: ContentLanguage;
+  existingOutcomes?: string[];
   onApply: (outcomes: string[]) => void;
 }) {
   const run = useServerFn(extractOutcomes);
@@ -39,15 +41,38 @@ export function OutcomesExtractor({
 
 
   const start = async () => {
-    setLoading(true);
-    try {
-      const result = await run({ data: { curriculum, topic, subject, grade, lang } });
-      if (!result.outcomes.length) {
-        toast.info(
-          "لم أجد نواتج محددة لهذا الموضوع في النص المرفوع — جرّب تحديد عنوان الدرس كما هو مكتوب في الكتاب بالضبط",
-        );
-        return;
-      }
+  setLoading(true);
+
+  try {
+    // إذا كانت نواتج التعلم قد استُخرجت بالفعل أثناء رفع المقرر،
+    // استخدمها مباشرة بدون إرسال طلب جديد إلى Gemini.
+    if (existingOutcomes?.length) {
+      setOutcomes(existingOutcomes);
+
+      setSelected(
+        Object.fromEntries(
+          existingOutcomes.map((_, index) => [index, true])
+        )
+      );
+
+      setSource("تم استخراجها مسبقًا من المقرر");
+      setOpen(true);
+
+      toast.success("تم تحميل نواتج التعلم المستخرجة مسبقًا");
+
+      return;
+    }
+
+    // لا توجد نواتج محفوظة، نستخدم Gemini عند الحاجة فقط.
+    const result = await run({
+      data: {
+        curriculum,
+        topic,
+        subject,
+        grade,
+        lang,
+      },
+    });
       setOutcomes(result.outcomes);
       setSelected(Object.fromEntries(result.outcomes.map((_, i) => [i, true])));
       setSource(result.source ?? "");

@@ -246,7 +246,8 @@ function Planning() {
             curriculum={curriculumText}
             onApply={(outcomes) =>
               setPlan((p) => ({ ...p, outcomes, objectives: outcomes.join("\n") }))
-            }
+            } 
+            existingOutcomes={plan.outcomes}
           />
 
           {/* Time bar */}
