@@ -1,5 +1,5 @@
 import { setResponseStatus } from "@tanstack/react-start/server";
-import { generateText, type ModelMessage } from "ai";
+import { generateText, type ModelMessage } from "ai"; 
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 import { encodeAiError } from "@/lib/ai-error";
@@ -73,7 +73,122 @@ function toAnthropicContent(content: unknown): unknown {
     return { type: "text", text: p.text ?? "" };
   });
 }
+function toGeminiParts(content: unknown): unknown[] {
+  if (typeof content === "string") {
+    return [{ text: content }];
+  }
 
+  if (!Array.isArray(content)) {
+    return [{ text: String(content ?? "") }];
+  }
+
+  return content.map((part) => {
+    const p = part as {
+      type?: string;
+      text?: string;
+      image?: unknown;
+      image_url?: { url?: string };
+    };
+
+    if (p.type === "text") {
+      return { text: p.text ?? "" };
+    }
+
+    const url =
+      p.image_url?.url ??
+      (typeof p.image === "string" ? p.image : undefined);
+
+    if (url) {
+      const match = /^data:([^;]+);base64,(.+)$/.exec(url);
+
+      if (match) {
+        return {
+          inlineData: {
+            mimeType: match[1],
+            data: match[2],
+          },
+        };
+      }
+
+      // Keep URL as text for now if it is not base64.
+      return { text: `Image URL: ${url}` };
+    }
+
+    return { text: p.text ?? "" };
+  });
+}
+async function callGemini(
+  key: string,
+  opts: AiCallOptions
+): Promise<string> {
+  const { instructions, messages } = normalize(opts.messages);
+
+  const model =
+    process.env["GEMINI_MODEL"]?.trim() ||
+    "gemini-2.5-flash";
+
+  const contents = messages.map((m) => ({
+    role: m.role === "assistant" ? "model" : "user",
+    parts: toGeminiParts(m.content),
+  }));
+
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+    {
+      method: "POST",
+      headers: {
+        "x-goog-api-key": key,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        ...(instructions
+          ? {
+              systemInstruction: {
+                parts: [{ text: instructions }],
+              },
+            }
+          : {}),
+        contents,
+        generationConfig: {
+          maxOutputTokens: opts.maxTokens ?? 4096,
+        },
+      }),
+    }
+  );
+
+  if (!res.ok) {
+    const detail = (await res.text()).slice(0, 500);
+    fail(
+      res.status,
+      messageFor(res.status, detail),
+      detail
+    );
+  }
+
+  const json = (await res.json()) as {
+    candidates?: {
+      content?: {
+        parts?: { text?: string }[];
+      };
+    }[];
+  };
+
+  const text =
+    json.candidates?.[0]?.content?.parts
+      ?.map((part) => part.text ?? "")
+      .join("")
+      .trim() ?? "";
+
+  if (!text) {
+    fail(
+      502,
+      "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.",
+      "Empty Gemini response"
+    );
+  }
+
+  return text;
+}
 /** نداء مباشر لـ Anthropic — نفس الطلب الذي ينجح في /api/public/health?probe=1 */
 async function callAnthropic(key: string, opts: AiCallOptions): Promise<string> {
   const { instructions, messages } = normalize(opts.messages);
@@ -108,8 +223,8 @@ function lovableModel(requested?: string) {
   if (!lovableKey)
     fail(
       503,
-      "خدمة الذكاء الاصطناعي غير مفعّلة على الخادم. أضف المتغير ANTHROPIC_API_KEY في إعدادات بيئة الاستضافة (Production + Preview + Development) ثم أعد النشر.",
-      "ANTHROPIC_API_KEY is not set",
+      "خدمة الذكاء الاصطناعي غير مفعّلة على الخادم.",
+      "Missing AI provider configuration",
     );
 
   const provider = createOpenAICompatible({
@@ -121,9 +236,25 @@ function lovableModel(requested?: string) {
 }
 
 export async function callAiGateway(opts: AiCallOptions): Promise<string> {
-  const anthropicKey = process.env["ANTHROPIC_API_KEY"]?.trim().replace(/^["']|["']$/g, "");
-  if (anthropicKey) return callAnthropic(anthropicKey, opts);
+  const geminiKey = process.env["GEMINI_API_KEY"]
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
 
+  // الأولوية لـ Gemini
+  if (geminiKey) {
+    return callGemini(geminiKey, opts);
+  }
+
+  // إذا لم يوجد Gemini، جرّب Anthropic
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"]
+    ?.trim()
+    .replace(/^["']|["']$/g, "");
+
+  if (anthropicKey) {
+    return callAnthropic(anthropicKey, opts);
+  }
+
+  // الخيار الأخير: Lovable AI Gateway
   const model = lovableModel(opts.model);
   const { instructions, messages } = normalize(opts.messages);
 
@@ -134,8 +265,17 @@ export async function callAiGateway(opts: AiCallOptions): Promise<string> {
       messages,
       maxOutputTokens: opts.maxTokens ?? 4096,
     });
+
     const content = result.text.trim();
-    if (!content) fail(502, "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.", "Empty AI response");
+
+    if (!content) {
+      fail(
+        502,
+        "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.",
+        "Empty AI response"
+      );
+    }
+
     return content;
   } catch (error) {
     const status = statusFrom(error);
@@ -143,8 +283,6 @@ export async function callAiGateway(opts: AiCallOptions): Promise<string> {
     fail(status, messageFor(status, detail), detail);
   }
 }
-
-
 
 
 export function failParse(raw: string): never {
