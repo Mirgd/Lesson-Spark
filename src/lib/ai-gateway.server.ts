@@ -238,8 +238,9 @@ async function callGemini(
       );
 
       console.warn(
-        `Gemini returned ${res.status}. Retrying attempt ${attempt + 1}/${maxAttempts} after ${delay}ms.`
-      );
+  `Gemini returned ${res.status}. Retrying attempt ${attempt + 1}/${maxAttempts} after ${delay}ms.`,
+  detail
+);
 
       await sleep(delay);
       continue;
