@@ -245,3 +245,105 @@ ${langInstruction(data.lang)}`;
       }));
     }
   });
+
+const DescribeKeywordsInput = z.object({
+  imageBase64: z.string().optional(),
+  topic: z.string(),
+  subject: z.string().default(""),
+  lang: z.enum(["ar", "en"]).default("ar"),
+});
+
+export const describePageKeywords = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => DescribeKeywordsInput.parse(data))
+  .handler(async ({ data }) => {
+    const instruction = `موضوع الدرس: ${data.topic || "غير محدد"}
+المادة: ${data.subject || "غير محدد"}
+
+استخرج كلمات بحث قصيرة ومفيدة للعثور على صورة تعليمية مناسبة لهذا الدرس.
+
+أجب بـ JSON فقط بهذا الشكل:
+{
+  "keywords": "numbers comparison greater less mathematics"
+}
+
+الشروط:
+- أعد عبارة بحث واحدة قصيرة.
+- استخدم كلمات مناسبة للبحث عن صور تعليمية.
+- لا تكتب شرحاً.
+- لا تكتب Markdown.
+- أعد JSON فقط.
+
+${langInstruction(data.lang)}`;
+
+    const content: unknown[] = [];
+
+    if (data.imageBase64) {
+      content.push({
+        type: "image_url",
+        image_url: {
+          url: `data:image/jpeg;base64,${data.imageBase64}`,
+        },
+      });
+    }
+
+    content.push({
+      type: "text",
+      text: instruction,
+    });
+
+    const raw = (
+      await callAiGateway({
+        messages: [
+          {
+            role: "user",
+            content,
+          },
+        ],
+        maxTokens: 500,
+      })
+    ).trim();
+
+    const clean = raw.replace(/```json|```/g, "").trim();
+
+    const start = clean.indexOf("{");
+    const end = clean.lastIndexOf("}");
+
+    try {
+      const parsed = JSON.parse(
+        start >= 0 && end > start
+          ? clean.slice(start, end + 1)
+          : clean,
+      ) as {
+        keywords?: unknown;
+      };
+
+      let keywords = "";
+
+      if (typeof parsed.keywords === "string") {
+        keywords = parsed.keywords.trim();
+      } else if (Array.isArray(parsed.keywords)) {
+        keywords = parsed.keywords
+          .filter(
+            (item): item is string =>
+              typeof item === "string" &&
+              item.trim().length > 0,
+          )
+          .join(" ");
+      }
+
+      return {
+        keywords,
+      };
+    } catch (e) {
+      if (
+        e instanceof Error &&
+        e.message.includes("AI_ERR::")
+      ) {
+        throw e;
+      }
+
+      return {
+        keywords: "",
+      };
+    }
+  });
