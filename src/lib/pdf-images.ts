@@ -95,26 +95,64 @@ export async function extractPdfAsImages(
   onProgress?: (done: number, total: number) => void,
 ): Promise<PageImage[]> {
   await import("./map-polyfill");
+
   const pdfjs = await import("pdfjs-dist");
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
+
+  const workerUrl = (
+    await import("pdfjs-dist/build/pdf.worker.min.mjs?url")
+  ).default;
+
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
   const arrayBuffer = await file.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+
+  const pdf = await pdfjs.getDocument({
+    data: arrayBuffer,
+  }).promise;
+
   const total = Math.min(pdf.numPages, maxPages);
+
   const images: PageImage[] = [];
 
   for (let i = 1; i <= total; i++) {
     const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 2 });
+
+    // Previously: scale 2
+    // Smaller size is enough for Gemini/OCR and greatly reduces payload size.
+    const viewport = page.getViewport({
+      scale: 1.25,
+    });
+
     const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+
+    canvas.width = Math.floor(viewport.width);
+    canvas.height = Math.floor(viewport.height);
+
     const ctx = canvas.getContext("2d");
-    if (!ctx) throw new Error("تعذّر إنشاء لوحة الرسم");
-    await page.render({ canvas, canvasContext: ctx, viewport }).promise;
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-    images.push({ page: i, dataUrl, base64: dataUrl.split(",")[1] });
+
+    if (!ctx) {
+      throw new Error("تعذّر إنشاء لوحة الرسم");
+    }
+
+    await page.render({
+      canvas,
+      canvasContext: ctx,
+      viewport,
+    }).promise;
+
+    // Previously quality was 0.85.
+    // 0.65 gives much smaller files while keeping text readable.
+    const dataUrl = canvas.toDataURL(
+      "image/jpeg",
+      0.65
+    );
+
+    images.push({
+      page: i,
+      dataUrl,
+      base64: dataUrl.split(",")[1],
+    });
+
     onProgress?.(i, total);
   }
 

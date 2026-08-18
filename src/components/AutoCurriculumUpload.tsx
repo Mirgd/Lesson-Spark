@@ -123,7 +123,7 @@ export function CurriculumAutoUpload({
         if (fullText.trim().length < 100) {
           setProgress({ step: 1, total: 4, message: "الملف مصوّر — جارٍ القراءة البصرية..." });
           const r = await readTextFromImages({
-            data: { images: pages.slice(0, 3).map((p) => p.base64) },
+            data: { images: pages.slice(0, 1).map((p) => p.base64) },
           });
           fullText = r.text;
         }
