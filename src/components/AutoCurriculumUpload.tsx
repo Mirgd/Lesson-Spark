@@ -17,12 +17,12 @@ import {
   readTextFromImages,
   type LessonInfo,
 } from "@/lib/autoplan.functions";
-import { analyzePageForPhase } from "@/lib/vision.functions";
+/*import { analyzePageForPhase } from "@/lib/vision.functions";*/
 import {
-  buildPresentation,
+  /*buildPresentation,*/
   clearPageImages,
   putPageImage,
-  saveSlides,
+  /*saveSlides,*/
   type AnalyzedPage,
 } from "@/lib/presentation";
 import { planLang, useCurriculum, type LessonPlan, type PhaseId } from "@/lib/lesson-types";
@@ -210,8 +210,9 @@ export function CurriculumAutoUpload({
       } catch (e) {
         console.error(e);
       }
-
+      
       /* ── 4) العرض التقديمي ── */
+      /*
       let slideCount = 0;
       if (pages.length) {
         setProgress({ step: 4, total: 4, message: "ترتيب صور الكتاب وفق مراحل 5E..." });
@@ -252,10 +253,11 @@ export function CurriculumAutoUpload({
         saveSlides(slides);
 
         slideCount = slides.length;
-      }
-
+      }*/
+      
+      let slideCount = 0;
       setSummary({ outcomes: info.outcomes, slides: slideCount });
-      setProgress({ step: 4, total: 4, message: "اكتملت الخطة ✅", done: true });
+      setProgress({ step: 4, total: 4, message: "تم حفظ صفحات المقرر✅", done: true });
       toast.success(
         bankCount
           ? `تم استخراج خطة الدرس — و${bankCount} سؤالاً في بنك الأسئلة`

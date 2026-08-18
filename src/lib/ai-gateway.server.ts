@@ -132,32 +132,120 @@ async function callGemini(
     parts: toGeminiParts(m.content),
   }));
 
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "x-goog-api-key": key,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify({
-        ...(instructions
-          ? {
-              systemInstruction: {
-                parts: [{ text: instructions }],
-              },
-            }
-          : {}),
-        contents,
-        generationConfig: {
-          maxOutputTokens: opts.maxTokens ?? 4096,
-        },
-      }),
-    }
-  );
+  const url =
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-  if (!res.ok) {
+  const body = JSON.stringify({
+    ...(instructions
+      ? {
+          systemInstruction: {
+            parts: [{ text: instructions }],
+          },
+        }
+      : {}),
+    contents,
+    generationConfig: {
+      maxOutputTokens: opts.maxTokens ?? 4096,
+    },
+  });
+
+  const sleep = (ms: number) =>
+    new Promise((resolve) => setTimeout(resolve, ms));
+
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let res: Response;
+
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "x-goog-api-key": key,
+          "content-type": "application/json",
+        },
+        body,
+      });
+    } catch (error) {
+      if (attempt < maxAttempts) {
+        await sleep(2000 * attempt);
+        continue;
+      }
+
+      const detail =
+        error instanceof Error
+          ? error.message
+          : String(error);
+
+      fail(
+        502,
+        "تعذّر الاتصال بخدمة الذكاء الاصطناعي.",
+        detail
+      );
+    }
+
+    if (res.ok) {
+      const json = (await res.json()) as {
+        candidates?: {
+          content?: {
+            parts?: { text?: string }[];
+          };
+        }[];
+      };
+
+      const text =
+        json.candidates?.[0]?.content?.parts
+          ?.map((part) => part.text ?? "")
+          .join("")
+          .trim() ?? "";
+
+      if (!text) {
+        fail(
+          502,
+          "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.",
+          "Empty Gemini response"
+        );
+      }
+
+      return text;
+    }
+
     const detail = (await res.text()).slice(0, 500);
+
+    const retryable =
+      res.status === 429 ||
+      res.status === 500 ||
+      res.status === 502 ||
+      res.status === 503 ||
+      res.status === 504;
+
+    if (retryable && attempt < maxAttempts) {
+      const retryAfter = res.headers.get("retry-after");
+
+      const retryAfterMs =
+        retryAfter && !Number.isNaN(Number(retryAfter))
+          ? Number(retryAfter) * 1000
+          : 0;
+
+      const exponentialDelay =
+        Math.pow(2, attempt - 1) * 3000;
+
+      const jitter =
+        Math.floor(Math.random() * 1000);
+
+      const delay = Math.max(
+        retryAfterMs,
+        exponentialDelay + jitter
+      );
+
+      console.warn(
+        `Gemini returned ${res.status}. Retrying attempt ${attempt + 1}/${maxAttempts} after ${delay}ms.`
+      );
+
+      await sleep(delay);
+      continue;
+    }
+
     fail(
       res.status,
       messageFor(res.status, detail),
@@ -165,29 +253,11 @@ async function callGemini(
     );
   }
 
-  const json = (await res.json()) as {
-    candidates?: {
-      content?: {
-        parts?: { text?: string }[];
-      };
-    }[];
-  };
-
-  const text =
-    json.candidates?.[0]?.content?.parts
-      ?.map((part) => part.text ?? "")
-      .join("")
-      .trim() ?? "";
-
-  if (!text) {
-    fail(
-      502,
-      "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.",
-      "Empty Gemini response"
-    );
-  }
-
-  return text;
+  fail(
+    502,
+    "تعذّر الاتصال بخدمة الذكاء الاصطناعي.",
+    "Gemini retries exhausted"
+  );
 }
 /** نداء مباشر لـ Anthropic — نفس الطلب الذي ينجح في /api/public/health?probe=1 */
 async function callAnthropic(key: string, opts: AiCallOptions): Promise<string> {
