@@ -19,9 +19,8 @@ import {
   getCurrentFileId,
 } from "@/lib/pdf-images";
 
-import { analyzePageForPhase } from "@/lib/vision.functions";
+import { analyzePagesForPhase } from "@/lib/vision.functions";
 import { clearFileArtifacts } from "@/lib/lesson-reset";
-
 import { SlideView } from "@/components/SlideView";
 import { planLang, type LessonPlan } from "@/lib/lesson-types";
 import { reportAiError } from "@/lib/ai-error";
@@ -42,63 +41,85 @@ export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
 
 
-  const run = async (file: File) => {
-    setBusy(true);
-    setDone(0);
-    setTotal(0);
-    setStatus("جارٍ تحويل صفحات الكتاب إلى صور...");
-    try {
-      const fileId = getCurrentFileId();
-      const pages = await extractPdfAsImages(file, 15, (d, t) => {
-        setDone(d);
-        setTotal(t);
-      });
-      // امسح صور أي ملف سابق ثم اربط كل صورة بمعرّف هذا الملف.
-      await clearPageImages();
-      for (const p of pages) await putPageImage(p.page, p.dataUrl, fileId);
-      if (getCurrentFileId() !== fileId) return;
+const run = async (file: File) => {
+  setBusy(true);
+  setDone(0);
+  setTotal(0);
+  setStatus("جارٍ تحويل صفحات الكتاب إلى صور...");
 
-      setDone(0);
-      setTotal(pages.length);
-      setStatus("جارٍ تحليل محتوى الصفحات...");
+  try {
+    const fileId = getCurrentFileId();
 
-      const analyzed: AnalyzedPage[] = [];
+    const pages = await extractPdfAsImages(file, 15, (d, t) => {
+      setDone(d);
+      setTotal(t);
+    });
 
-for (const p of pages) {
-  if (getCurrentFileId() !== fileId) return;
+    await clearPageImages();
 
-  setStatus(`جارٍ تحليل صفحة ${p.page} من ${pages.length}...`);
-
-  const r = await analyzePageForPhase({
-    data: {
-      imageBase64: p.base64,
-      pageNumber: p.page,
-      topic: plan.topic,
-      subject: plan.subject,
-      lang: planLang(plan),
-    },
-  });
-
-  analyzed.push(r as AnalyzedPage);
-
-  setDone((d) => d + 1);
-
-  // مهلة قصيرة لتقليل احتمال تجاوز حد Gemini المجاني
-  await new Promise((resolve) => setTimeout(resolve, 1500));
-}
-
-      if (getCurrentFileId() !== fileId) return;
-      const built = buildPresentation(analyzed, plan);
-      setSlides(built);
-
-      toast.success(`تم بناء العرض — ${built.length} شرائح`);
-    } catch (e) {
-      toast.error(reportAiError(e, "بناء العرض التقديمي", "فشل بناء العرض"));
-    } finally {
-      setBusy(false);
-      setStatus("");
+    for (const p of pages) {
+      await putPageImage(p.page, p.dataUrl, fileId);
     }
-  };
+
+    if (getCurrentFileId() !== fileId) return;
+
+    setDone(0);
+    setTotal(pages.length);
+    setStatus("جارٍ تحليل محتوى الصفحات...");
+
+    const analyzed: AnalyzedPage[] = [];
+
+    const BATCH_SIZE = 2;
+
+    for (let i = 0; i < pages.length; i += BATCH_SIZE) {
+      if (getCurrentFileId() !== fileId) return;
+
+      const batch = pages.slice(i, i + BATCH_SIZE);
+
+      setStatus(
+        `جارٍ تحليل الصفحات ${batch[0].page} إلى ${
+          batch[batch.length - 1].page
+        } من ${pages.length}...`
+      );
+
+      const r = await analyzePagesForPhase({
+        data: {
+          pages: batch.map((p) => ({
+            imageBase64: p.base64,
+            pageNumber: p.page,
+          })),
+          topic: plan.topic,
+          subject: plan.subject,
+          lang: planLang(plan),
+        },
+      });
+
+      analyzed.push(...(r as AnalyzedPage[]));
+
+      setDone((d) => d + batch.length);
+
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+
+    if (getCurrentFileId() !== fileId) return;
+
+    const built = buildPresentation(analyzed, plan);
+    setSlides(built);
+
+    toast.success(`تم بناء العرض — ${built.length} شرائح`);
+  } catch (e) {
+    toast.error(
+      reportAiError(
+        e,
+        "بناء العرض التقديمي",
+        "فشل بناء العرض"
+      )
+    );
+  } finally {
+    setBusy(false);
+    setStatus("");
+  }
+};
 
   const start = () => {
     if (sharedFile) void run(sharedFile);
