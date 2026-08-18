@@ -117,6 +117,44 @@ function toGeminiParts(content: unknown): unknown[] {
     return { text: p.text ?? "" };
   });
 }
+// ---------- Gemini global rate limiter ----------
+
+const GEMINI_MIN_INTERVAL_MS = 13_000;
+
+let lastGeminiRequestAt = 0;
+
+let geminiQueue: Promise<void> = Promise.resolve();
+
+async function waitForGeminiSlot(): Promise<void> {
+  const previous = geminiQueue;
+
+  let release!: () => void;
+
+  geminiQueue = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous;
+
+  const now = Date.now();
+
+  const waitMs = Math.max(
+    0,
+    GEMINI_MIN_INTERVAL_MS - (now - lastGeminiRequestAt)
+  );
+
+  if (waitMs > 0) {
+    console.log(
+      `Gemini rate limiter: waiting ${waitMs}ms before next request.`
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+
+  lastGeminiRequestAt = Date.now();
+
+  release();
+}
 async function callGemini(
   key: string,
   opts: AiCallOptions
@@ -158,6 +196,7 @@ async function callGemini(
     let res: Response;
 
     try {
+      await waitForGeminiSlot();
       res = await fetch(url, {
         method: "POST",
         headers: {

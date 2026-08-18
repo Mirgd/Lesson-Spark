@@ -98,7 +98,7 @@ const run = async (file: File) => {
 
       setDone((d) => d + batch.length);
 
-      await new Promise((resolve) => setTimeout(resolve, 10000));    }
+         }
 
     if (getCurrentFileId() !== fileId) return;
 
