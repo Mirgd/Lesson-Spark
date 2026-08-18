@@ -152,7 +152,7 @@ async function callGemini(
   const sleep = (ms: number) =>
     new Promise((resolve) => setTimeout(resolve, ms));
 
-  const maxAttempts = 3;
+  const maxAttempts = 4;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let res: Response;
@@ -228,8 +228,7 @@ async function callGemini(
           : 0;
 
       const exponentialDelay =
-        Math.pow(2, attempt - 1) * 3000;
-
+        Math.pow(2, attempt - 1) * 10000;
       const jitter =
         Math.floor(Math.random() * 1000);
 
