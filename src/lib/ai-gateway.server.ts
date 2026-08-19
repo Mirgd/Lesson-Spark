@@ -163,7 +163,7 @@ async function callGemini(
 
   const model =
     process.env["GEMINI_MODEL"]?.trim() ||
-    "gemini-3.6-flash";
+    "gemini-3.5-flash-lite";
 
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
@@ -255,7 +255,6 @@ async function callGemini(
     const detail = (await res.text()).slice(0, 1000);
 
     const retryable =
-      res.status === 429 ||
       res.status === 500 ||
       res.status === 502 ||
       res.status === 503 ||
