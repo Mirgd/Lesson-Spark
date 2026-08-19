@@ -104,10 +104,39 @@ export async function extractPdfAsImages(
 
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
-  const arrayBuffer = await file.arrayBuffer();
+  /*
+   * Mobile-compatible file reading.
+   *
+   * بدل الاعتماد مباشرة على:
+   * file.arrayBuffer()
+   *
+   * نستخدم FileReader لأنه أكثر توافقاً
+   * مع متصفحات الجوال وWebViews.
+   */
+  const arrayBuffer = await new Promise<ArrayBuffer>((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (reader.result instanceof ArrayBuffer) {
+        resolve(reader.result);
+      } else {
+        reject(new Error("Unable to read PDF as ArrayBuffer"));
+      }
+    };
+
+    reader.onerror = () => {
+      reject(reader.error ?? new Error("Unable to read PDF file"));
+    };
+
+    reader.onabort = () => {
+      reject(new Error("PDF reading was cancelled"));
+    };
+
+    reader.readAsArrayBuffer(file);
+  });
 
   const pdf = await pdfjs.getDocument({
-    data: arrayBuffer,
+    data: new Uint8Array(arrayBuffer),
   }).promise;
 
   const total = Math.min(pdf.numPages, maxPages);
@@ -117,8 +146,10 @@ export async function extractPdfAsImages(
   for (let i = 1; i <= total; i++) {
     const page = await pdf.getPage(i);
 
-    // Previously: scale 2
-    // Smaller size is enough for Gemini/OCR and greatly reduces payload size.
+    /*
+     * حجم أقل مناسب أكثر للموبايل
+     * ويقلل استهلاك الذاكرة.
+     */
     const viewport = page.getViewport({
       scale: 1.25,
     });
@@ -131,7 +162,7 @@ export async function extractPdfAsImages(
     const ctx = canvas.getContext("2d");
 
     if (!ctx) {
-      throw new Error("تعذّر إنشاء لوحة الرسم");
+      throw new Error("Unable to create canvas context");
     }
 
     await page.render({
@@ -140,20 +171,29 @@ export async function extractPdfAsImages(
       viewport,
     }).promise;
 
-    // Previously quality was 0.85.
-    // 0.65 gives much smaller files while keeping text readable.
     const dataUrl = canvas.toDataURL(
       "image/jpeg",
-      0.65
+      0.65,
     );
+
+    const commaIndex = dataUrl.indexOf(",");
+
+    if (commaIndex === -1) {
+      throw new Error(`Unable to convert PDF page ${i} to image`);
+    }
 
     images.push({
       page: i,
       dataUrl,
-      base64: dataUrl.split(",")[1],
+      base64: dataUrl.slice(commaIndex + 1),
     });
 
     onProgress?.(i, total);
+
+    /*
+     * تحرير موارد الصفحة مهم خصوصاً على الموبايل.
+     */
+    page.cleanup();
   }
 
   return images;
