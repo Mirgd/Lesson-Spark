@@ -34,8 +34,6 @@ import {
   type PhaseId,
 } from "@/lib/lesson-types";
 
-import { reportAiError } from "@/lib/ai-error";
-
 interface Progress {
   step: number;
   total: number;
@@ -61,6 +59,7 @@ function ProgressBar({
   const isArabic = language === "ar";
 
   const safeTotal = Math.max(total, 1);
+
   const percentage = Math.min(
     100,
     Math.max(0, (step / safeTotal) * 100),
@@ -149,10 +148,6 @@ export function CurriculumAutoUpload({
     Boolean(progress) &&
     !progress?.done;
 
-  /**
-   * يمسح كل آثار الملف السابق
-   * ثم ينظف واجهة المقرر.
-   */
   const wipe = async () => {
     await clearFileArtifacts();
 
@@ -161,10 +156,6 @@ export function CurriculumAutoUpload({
     setSummary(null);
   };
 
-  /**
-   * رفع ملف جديد:
-   * إذا كان هناك ملف حالي يطلب التأكيد أولًا.
-   */
   const requestProcess = (
     file: File,
   ) => {
@@ -175,12 +166,11 @@ export function CurriculumAutoUpload({
     }
   };
 
-  /**
-   * معالجة ملف المقرر.
-   */
   const process = async (
     file: File,
   ) => {
+    let stage = "starting";
+
     setSummary(null);
 
     setProgress({
@@ -192,15 +182,19 @@ export function CurriculumAutoUpload({
     });
 
     try {
-      /* ─────────────────────────────
-         0) مسح آثار الملف السابق
-      ───────────────────────────── */
+      /* ============================
+         0) Reset previous artifacts
+      ============================ */
+
+      stage = "clearFileArtifacts";
 
       await clearFileArtifacts();
 
-      /* ─────────────────────────────
-         1) استخراج النص والصور
-      ───────────────────────────── */
+      /* ============================
+         1) Detect file type
+      ============================ */
+
+      stage = "detectFileType";
 
       const lowerName =
         file.name.toLowerCase();
@@ -209,23 +203,27 @@ export function CurriculumAutoUpload({
         lowerName.endsWith(".pdf");
 
       let fullText = "";
-
       let pages: PageImage[] = [];
 
       if (isPdf) {
-        /*
-         * نحفظ الملف كـ PDF فقط هنا.
-         * لا نستدعي setLastPdfFile مع DOCX/TXT.
-         */
+        /* ============================
+           PDF setup
+        ============================ */
+
+        stage = "setLastPdfFile";
+
         setLastPdfFile(file);
 
-        // يحافظ على معرف الملف الحالي
-        // لاستخدامه بواسطة بقية النظام.
+        stage = "getCurrentFileId";
+
         getCurrentFileId();
 
-        /*
-         * تحويل صفحات PDF إلى صور.
-         */
+        /* ============================
+           Convert PDF pages to images
+        ============================ */
+
+        stage = "extractPdfAsImages";
+
         pages =
           await extractPdfAsImages(
             file,
@@ -241,18 +239,19 @@ export function CurriculumAutoUpload({
             },
           );
 
-        /*
-         * محاولة استخراج النص الحقيقي
-         * من الـ PDF.
-         */
+        /* ============================
+           Extract text from PDF
+        ============================ */
+
+        stage = "extractText";
+
         fullText =
           await extractText(file);
 
-        /*
-         * إذا كان الملف PDF مصورًا
-         * ولا يحتوي نصًا كافيًا،
-         * نستخدم القراءة البصرية.
-         */
+        /* ============================
+           OCR fallback
+        ============================ */
+
         if (
           fullText.trim().length < 100 &&
           pages.length > 0
@@ -269,6 +268,9 @@ export function CurriculumAutoUpload({
             pages[0];
 
           if (firstPage?.base64) {
+            stage =
+              "readTextFromImages";
+
             const result =
               await readTextFromImages({
                 data: {
@@ -283,13 +285,21 @@ export function CurriculumAutoUpload({
           }
         }
       } else {
-        /*
-         * DOCX / TXT / MD
-         * لا تحتاج تحويل صفحات PDF.
-         */
+        /* ============================
+           DOCX / TXT / MD
+        ============================ */
+
+        stage = "extractText";
+
         fullText =
           await extractText(file);
       }
+
+      /* ============================
+         Validate extracted text
+      ============================ */
+
+      stage = "validateExtractedText";
 
       if (!fullText.trim()) {
         throw new Error(
@@ -299,18 +309,20 @@ export function CurriculumAutoUpload({
         );
       }
 
-      /*
-       * حفظ النص واسم الملف
-       * داخل Curriculum Context.
-       */
+      /* ============================
+         Save curriculum
+      ============================ */
+
+      stage = "saveCurriculum";
+
       set(
         fullText,
         file.name,
       );
 
-      /* ─────────────────────────────
-         2) تحليل المقرر وبناء الخطة
-      ───────────────────────────── */
+      /* ============================
+         2) Generate lesson plan
+      ============================ */
 
       setProgress({
         step: 2,
@@ -319,6 +331,9 @@ export function CurriculumAutoUpload({
           ? "تحليل المقرر وبناء خطة الدرس..."
           : "Analyzing the curriculum and building the lesson plan...",
       });
+
+      stage =
+        "generateCompleteLesson";
 
       const generated =
         await generateCompleteLesson({
@@ -332,9 +347,11 @@ export function CurriculumAutoUpload({
           },
         });
 
-      /* ─────────────────────────────
-         3) تعبئة الخطة
-      ───────────────────────────── */
+      /* ============================
+         3) Fill lesson plan
+      ============================ */
+
+      stage = "setPlan";
 
       setProgress({
         step: 3,
@@ -417,18 +434,10 @@ export function CurriculumAutoUpload({
         },
       }));
 
-      /*
-       * بنك الأسئلة غير مفعّل
-       * في هذا المسار حاليًا.
-       */
       const bankCount = 0;
-
-      /*
-       * العرض التقديمي يتم بناؤه
-       * من PresentationBuilder،
-       * لذلك لا ننشئ الشرائح هنا.
-       */
       const slideCount = 0;
+
+      stage = "setSummary";
 
       setSummary({
         outcomes:
@@ -436,9 +445,11 @@ export function CurriculumAutoUpload({
         slides: slideCount,
       });
 
-      /* ─────────────────────────────
-         4) انتهت المعالجة
-      ───────────────────────────── */
+      /* ============================
+         4) Finished
+      ============================ */
+
+      stage = "completed";
 
       setProgress({
         step: 4,
@@ -460,30 +471,30 @@ export function CurriculumAutoUpload({
       );
     } catch (error) {
       console.error(
-        "Curriculum processing failed:",
+        `Curriculum processing failed at ${stage}:`,
         error,
       );
 
-      const message =
-        reportAiError(
-          error,
-          isArabic
-            ? "الاستخراج التلقائي"
-            : "Automatic Extraction",
-          isArabic
-            ? "تعذّر إكمال الاستخراج"
-            : "Unable to complete the extraction",
-        );
+      const rawMessage =
+        error instanceof Error
+          ? error.message
+          : String(error);
 
-      toast.error(message);
+      /*
+       * مؤقتًا نظهر المرحلة الحقيقية
+       * التي فشل عندها الموبايل.
+       */
+      toast.error(
+        `MOBILE DEBUG — ${stage}: ${rawMessage}`,
+        {
+          duration: 12000,
+        },
+      );
 
       setProgress(null);
     }
   };
 
-  /**
-   * نافذة تأكيد استبدال ملف المقرر.
-   */
   const ReplaceDialog = () =>
     pendingFile ? (
       <div
@@ -541,9 +552,9 @@ export function CurriculumAutoUpload({
       </div>
     ) : null;
 
-  /* ========================================
-     حالة: يوجد مقرر مرفوع بالفعل
-  ======================================== */
+  /* ==============================
+     Uploaded state
+  ============================== */
 
   if (text && !busy) {
     return (
@@ -654,11 +665,14 @@ export function CurriculumAutoUpload({
                 <span className="font-bold text-foreground">
                   {plan.subject ||
                     "—"}
-                </span>{" "}
-                ·{" "}
+                </span>
+
+                {" · "}
+
                 {isArabic
                   ? "الصف:"
                   : "Grade:"}{" "}
+
                 <span className="font-bold text-foreground">
                   {plan.grade ||
                     "—"}
@@ -669,25 +683,33 @@ export function CurriculumAutoUpload({
                 {isArabic
                   ? "نواتج التعلم:"
                   : "Learning Outcomes:"}{" "}
+
                 <span className="font-bold text-foreground">
                   {
-                    summary.outcomes
+                    summary
+                      .outcomes
                       .length
                   }
-                </span>{" "}
-                ·{" "}
+                </span>
+
+                {" · "}
+
                 {isArabic
                   ? "خطة 5E:"
                   : "5E Plan:"}{" "}
+
                 <span className="font-bold text-green-700">
                   {isArabic
                     ? "مكتملة"
                     : "Complete"}
-                </span>{" "}
-                ·{" "}
+                </span>
+
+                {" · "}
+
                 {isArabic
                   ? "العرض:"
                   : "Presentation:"}{" "}
+
                 <span className="font-bold text-foreground">
                   {summary.slides}{" "}
                   {isArabic
@@ -735,9 +757,9 @@ export function CurriculumAutoUpload({
     );
   }
 
-  /* ========================================
-     حالة: رفع / معالجة ملف
-  ======================================== */
+  /* ==============================
+     Upload / processing state
+  ============================== */
 
   return (
     <div className="card-elevated p-4">
