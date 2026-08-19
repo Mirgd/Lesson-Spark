@@ -20,6 +20,11 @@ const PlanInput = z.object({
   realWorldContext: z.string().default(""),
   lang: z.enum(["ar", "en"]).default("ar"),
 });
+const CompleteLessonInput = z.object({
+  text: z.string(),
+  firstPageImage: z.string().optional(),
+  lang: z.enum(["ar", "en"]).default("ar"),
+});
 
 export interface LessonInfo {
   topic: string;
@@ -132,7 +137,51 @@ export interface GeneratedPlan {
   evaluate: { teacher: string; student: string };
   homework: { teacher: string; student: string };
 }
+export interface CompleteLessonResult {
+  topic: string;
+  subject: string;
+  grade: string;
+  unitTitle: string;
 
+  outcomes: string[];
+  keywords: string[];
+  mainConcepts: string[];
+
+  priorKnowledge: string;
+  realWorldContext: string;
+
+  objectives: string[];
+
+  engage: {
+    teacher: string;
+    student: string;
+  };
+
+  explore: {
+    teacher: string;
+    student: string;
+  };
+
+  explain: {
+    teacher: string;
+    student: string;
+  };
+
+  elaborate: {
+    teacher: string;
+    student: string;
+  };
+
+  evaluate: {
+    teacher: string;
+    student: string;
+  };
+
+  homework: {
+    teacher: string;
+    student: string;
+  };
+}
 /** الخطوة 3: بناء خطة 5E كاملة من محتوى المقرر */
 export const generateFullPlan = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => PlanInput.parse(data))
@@ -185,7 +234,188 @@ ${langInstruction(data.lang)}`;
     }
 
   });
+export const generateCompleteLesson = createServerFn({
+  method: "POST",
+})
+  .inputValidator((data: unknown) =>
+    CompleteLessonInput.parse(data)
+  )
+  .handler(
+    async ({ data }): Promise<CompleteLessonResult> => {
+      const instruction = `
+أنت خبير تربوي متخصص في تحليل المناهج وتصميم دروس STEM وفق نموذج 5E والنظرية البنائية.
 
+حلّل محتوى المقرر التالي وأنشئ جميع بيانات الدرس في استجابة واحدة فقط.
+
+نص المقرر:
+${data.text.slice(0, 8000)}
+
+المطلوب:
+
+1. تحديد عنوان الدرس.
+2. تحديد المادة.
+3. تحديد الصف.
+4. تحديد الوحدة.
+5. استخراج نواتج التعلم.
+6. تحديد الكلمات والمفاهيم الرئيسية.
+7. تحديد المعرفة السابقة.
+8. ربط الدرس بسياق من الحياة الواقعية.
+9. كتابة أهداف الدرس.
+10. بناء خطة 5E كاملة.
+11. إنشاء واجب منزلي مرتبط بالدرس.
+
+مدة الدرس:
+55 دقيقة للحصة + 5 دقائق للواجب.
+
+قواعد نواتج التعلم:
+- بصيغة المتكلم المفرد.
+- تبدأ بفعل مضارع قابل للقياس.
+- أمثلة:
+  أُعرّف
+  أُميّز
+  أُطبّق
+  أستنتج
+  أربط
+  أحلّل
+  أبني
+- لا تستخدم "سأ".
+- لا تستخدم "يتوقع من الطالب".
+
+أجب بـ JSON فقط دون Markdown أو أي شرح خارجي:
+
+{
+  "topic": "عنوان الدرس",
+  "subject": "المادة",
+  "grade": "الصف",
+  "unitTitle": "الوحدة",
+
+  "outcomes": [
+    "ناتج تعلم 1",
+    "ناتج تعلم 2",
+    "ناتج تعلم 3"
+  ],
+
+  "keywords": [
+    "مصطلح 1",
+    "مصطلح 2"
+  ],
+
+  "mainConcepts": [
+    "مفهوم 1",
+    "مفهوم 2"
+  ],
+
+  "priorKnowledge": "المعرفة السابقة",
+
+  "realWorldContext": "ارتباط الدرس بالحياة الواقعية",
+
+  "objectives": [
+    "هدف 1",
+    "هدف 2",
+    "هدف 3"
+  ],
+
+  "engage": {
+    "teacher": "دور المعلم — 11 دقيقة",
+    "student": "دور الطالب"
+  },
+
+  "explore": {
+    "teacher": "دور المعلم — 16 دقيقة",
+    "student": "دور الطالب"
+  },
+
+  "explain": {
+    "teacher": "دور المعلم — 13 دقيقة",
+    "student": "دور الطالب"
+  },
+
+  "elaborate": {
+    "teacher": "دور المعلم — 11 دقيقة",
+    "student": "دور الطالب"
+  },
+
+  "evaluate": {
+    "teacher": "دور المعلم — 5 دقائق",
+    "student": "دور الطالب"
+  },
+
+  "homework": {
+    "teacher": "توجيه المعلم",
+    "student": "تحدٍ منزلي مرتبط بمحتوى الدرس"
+  }
+}
+
+${langInstruction(data.lang)}
+`;
+
+      const content: Content[] = [];
+
+      if (data.firstPageImage) {
+        content.push({
+          type: "image_url",
+          image_url: {
+            url: `data:image/jpeg;base64,${data.firstPageImage}`,
+          },
+        });
+      }
+
+      content.push({
+        type: "text",
+        text: instruction,
+      });
+
+      const raw = await callGateway(content, 7000);
+
+      const pick = (v: unknown) => {
+        const o = (v ?? {}) as Record<string, unknown>;
+
+        return {
+          teacher: str(o.teacher),
+          student: str(o.student),
+        };
+      };
+
+      try {
+        const p =
+          parseJson<Record<string, unknown>>(raw);
+
+        return {
+          topic: str(p.topic),
+          subject: str(p.subject),
+          grade: str(p.grade),
+          unitTitle: str(p.unitTitle),
+
+          outcomes: strArr(p.outcomes),
+          keywords: strArr(p.keywords),
+          mainConcepts: strArr(p.mainConcepts),
+
+          priorKnowledge: str(p.priorKnowledge),
+          realWorldContext: str(
+            p.realWorldContext
+          ),
+
+          objectives: strArr(p.objectives),
+
+          engage: pick(p.engage),
+          explore: pick(p.explore),
+          explain: pick(p.explain),
+          elaborate: pick(p.elaborate),
+          evaluate: pick(p.evaluate),
+          homework: pick(p.homework),
+        };
+      } catch (e) {
+        if (
+          e instanceof Error &&
+          e.message.includes("AI_ERR::")
+        ) {
+          throw e;
+        }
+
+        failParse(raw);
+      }
+    }
+  );
 /** قراءة بصرية للملفات المصوّرة: استخراج نص من صور الصفحات */
 export const readTextFromImages = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ images: z.array(z.string()).max(3) }).parse(data))

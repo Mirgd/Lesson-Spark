@@ -9,14 +9,12 @@ import {
   pool,
   type PageImage,
 } from "@/lib/pdf-images";
+ import {
+  generateCompleteLesson,
+  readTextFromImages,
+} from "@/lib/autoplan.functions";
 import { clearFileArtifacts } from "@/lib/lesson-reset";
 
-import {
-  extractLessonInfo,
-  generateFullPlan,
-  readTextFromImages,
-  type LessonInfo,
-} from "@/lib/autoplan.functions";
 /*import { analyzePageForPhase } from "@/lib/vision.functions";*/
 import {
   /*buildPresentation,*/
@@ -26,8 +24,6 @@ import {
   type AnalyzedPage,
 } from "@/lib/presentation";
 import { planLang, useCurriculum, type LessonPlan, type PhaseId } from "@/lib/lesson-types";
-import { generatePhaseQuestions } from "@/lib/questions.functions";
-import { addQuestionsToBank } from "@/lib/question-bank";
 import { reportAiError } from "@/lib/ai-error";
 
 interface Progress {
@@ -134,84 +130,65 @@ export function CurriculumAutoUpload({
       if (!fullText.trim()) throw new Error("تعذّر قراءة الملف — تأكد أنه PDF أو DOCX سليم");
       set(fullText, file.name);
 
-      /* ── 2) معلومات الدرس ── */
-      setProgress({ step: 2, total: 4, message: "استخراج عنوان الدرس ونواتج التعلم..." });
-      const info = (await extractLessonInfo({
-        data: { text: fullText, firstPageImage: pages[0]?.base64, lang: planLang(plan) },
-      })) as LessonInfo;
+      /* ── 2) تحليل المقرر وبناء الخطة في طلب واحد ── */
+setProgress({
+  step: 2,
+  total: 3,
+  message: "تحليل المقرر وبناء خطة الدرس...",
+});
 
-      setPlan((p) => ({
-        ...p,
-        topic: info?.topic || p.topic,
-        subject: info?.subject || p.subject,
-        grade: info?.grade || p.grade,
-        objectives: info?.objectives?.length ? info.objectives.join("\n") : p.objectives,
-        outcomes: info?.outcomes?.length ? info.outcomes : p.outcomes,
-      }));
+const generated = await generateCompleteLesson({
+  data: {
+    text: fullText,
+    firstPageImage: pages[0]?.base64,
+    lang: planLang(plan),
+  },
+});
 
-      /* ── 3) خطة 5E ── */
-      setProgress({ step: 3, total: 4, message: "توزيع الأنشطة على مراحل 5E..." });
-      const generated = await generateFullPlan({
-        data: {
-          text: fullText,
-          topic: info.topic,
-          subject: info.subject,
-          grade: info.grade,
-          mainConcepts: info.mainConcepts,
-          priorKnowledge: info.priorKnowledge,
-          realWorldContext: info.realWorldContext,
-          lang: planLang(plan),
-        },
-      });
+setPlan((p) => ({
+  ...p,
 
-      setPlan((p) => ({
-        ...p,
-        phases: p.phases.map((ph) => {
-          const g = generated?.[ph.id];
-          if (!g) return ph;
-          return {
-            ...ph,
-            duration: DURATIONS[ph.id] ?? ph.duration,
-            teacherActivity: g.teacher || ph.teacherActivity,
-            studentActivity: g.student || ph.studentActivity,
-          };
-        }),
-        homework: {
-          ...p.homework,
-          teacherNote: generated?.homework?.teacher || p.homework.teacherNote,
-          studentText: generated?.homework?.student || p.homework.studentText,
-        },
-      }));
+  topic: generated.topic || p.topic,
 
-      /* ── 3ب) بنك الأسئلة وفق تصنيف بلوم ── */
-      let bankCount = 0;
-      try {
-        setProgress({ step: 3, total: 4, message: "توليد أسئلة بنك الأسئلة وفق تصنيف بلوم..." });
-        const qs = await generatePhaseQuestions({
-          data: {
-            text: fullText,
-            topic: info.topic || plan.topic,
-            subject: info.subject || plan.subject,
-            grade: info.grade || plan.grade,
-            lang: planLang(plan),
-          },
-        });
-        bankCount = addQuestionsToBank(
-          Object.entries(qs).flatMap(([phase, list]) =>
-            list.map((q) => ({
-              phase,
-              subject: info.subject || plan.subject,
-              topic: info.topic || plan.topic,
-              text: q.level ? `${q.text} (${q.level})` : q.text,
-              answer: q.answer,
-            })),
-          ),
-        );
-      } catch (e) {
-        console.error(e);
-      }
-      
-      /* ── 4) العرض التقديمي ── */
+  subject: generated.subject || p.subject,
+
+  grade: generated.grade || p.grade,
+
+  objectives:
+    generated.objectives?.length
+      ? generated.objectives.join("\n")
+      : p.objectives,
+
+  outcomes:
+    generated.outcomes?.length
+      ? generated.outcomes
+      : p.outcomes,
+
+  phases: p.phases.map((ph) => {
+    const g = generated[ph.id];
+
+    if (!g) return ph;
+
+    return {
+      ...ph,
+      duration: DURATIONS[ph.id] ?? ph.duration,
+      teacherActivity: g.teacher || ph.teacherActivity,
+      studentActivity: g.student || ph.studentActivity,
+    };
+  }),
+
+  homework: {
+    ...p.homework,
+    teacherNote:
+      generated.homework?.teacher ||
+      p.homework.teacherNote,
+    studentText:
+      generated.homework?.student ||
+      p.homework.studentText,
+  },
+}));
+const bankCount = 0;
+            /* ── 4) العرض التقديمي ── */
       /*
       let slideCount = 0;
       if (pages.length) {
@@ -256,7 +233,10 @@ export function CurriculumAutoUpload({
       }*/
       
       let slideCount = 0;
-      setSummary({ outcomes: info.outcomes, slides: slideCount });
+      setSummary({
+        outcomes: generated.outcomes ?? [],
+        slides: slideCount,
+      });
       setProgress({ step: 4, total: 4, message: "تم حفظ صفحات المقرر✅", done: true });
       toast.success(
         bankCount
