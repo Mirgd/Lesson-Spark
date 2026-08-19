@@ -188,15 +188,16 @@ async function callGemini(
   });
 
   const sleep = (ms: number) =>
-    new Promise((resolve) => setTimeout(resolve, ms));
+    new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-  const maxAttempts = 4;
+  const maxAttempts = 2;
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     let res: Response;
 
     try {
       await waitForGeminiSlot();
+
       res = await fetch(url, {
         method: "POST",
         headers: {
@@ -207,7 +208,7 @@ async function callGemini(
       });
     } catch (error) {
       if (attempt < maxAttempts) {
-        await sleep(2000 * attempt);
+        await sleep(5000);
         continue;
       }
 
@@ -216,13 +217,14 @@ async function callGemini(
           ? error.message
           : String(error);
 
-      fail(
+      return fail(
         502,
         "تعذّر الاتصال بخدمة الذكاء الاصطناعي.",
         detail
       );
     }
 
+    // نجاح الطلب
     if (res.ok) {
       const json = (await res.json()) as {
         candidates?: {
@@ -239,7 +241,7 @@ async function callGemini(
           .trim() ?? "";
 
       if (!text) {
-        fail(
+        return fail(
           502,
           "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.",
           "Empty Gemini response"
@@ -249,7 +251,8 @@ async function callGemini(
       return text;
     }
 
-    const detail = (await res.text()).slice(0, 500);
+    // فشل الطلب
+    const detail = (await res.text()).slice(0, 1000);
 
     const retryable =
       res.status === 429 ||
@@ -258,41 +261,53 @@ async function callGemini(
       res.status === 503 ||
       res.status === 504;
 
+    // إعادة المحاولة إذا كانت المشكلة مؤقتة
     if (retryable && attempt < maxAttempts) {
       const retryAfter = res.headers.get("retry-after");
 
-      const retryAfterMs =
+      const retryAfterHeaderMs =
         retryAfter && !Number.isNaN(Number(retryAfter))
           ? Number(retryAfter) * 1000
           : 0;
 
-      const exponentialDelay =
-        Math.pow(2, attempt - 1) * 10000;
-      const jitter =
-        Math.floor(Math.random() * 1000);
-
-      const delay = Math.max(
-        retryAfterMs,
-        exponentialDelay + jitter
+      // مثال من Gemini:
+      // "Please retry in 57.053665594s."
+      const retryMatch = detail.match(
+        /please retry in\s+([\d.]+)s/i
       );
 
+      const retryAfterBodyMs = retryMatch
+        ? Math.ceil(Number(retryMatch[1]) * 1000)
+        : 0;
+
+      const fallbackDelay = 15000;
+
+      const delay =
+        Math.max(
+          retryAfterHeaderMs,
+          retryAfterBodyMs,
+          fallbackDelay
+        ) + 1000;
+
       console.warn(
-  `Gemini returned ${res.status}. Retrying attempt ${attempt + 1}/${maxAttempts} after ${delay}ms.`,
-  detail
-);
+        `Gemini returned ${res.status}. Retrying attempt ${
+          attempt + 1
+        }/${maxAttempts} after ${delay}ms.`,
+        detail
+      );
 
       await sleep(delay);
       continue;
     }
 
-    fail(
+    return fail(
       res.status,
       messageFor(res.status, detail),
       detail
     );
   }
 
-  fail(
+  return fail(
     502,
     "تعذّر الاتصال بخدمة الذكاء الاصطناعي.",
     "Gemini retries exhausted"
