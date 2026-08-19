@@ -1,5 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  UiLanguageProvider,
+  useUiLanguage,
+} from "@/lib/ui-language";
+import {
   Outlet,
   Link,
   createRootRouteWithContext,
@@ -118,12 +122,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-function RootShell({ children }: { children: ReactNode }) {
+function RootShell({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
-    <html lang="ar" dir="rtl">
+    <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
+
       <body>
         {children}
         <Scripts />
@@ -134,6 +143,12 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function Header() {
   const { identity } = useSession();
+  const {
+  language,
+  toggleLanguage,
+} = useUiLanguage();
+
+const isArabic = language === "ar";
   const isSupervisor = identity?.isSupervisor ?? false;
   const linkCls =
     "px-4 py-1.5 rounded-lg text-[15px] font-semibold text-[#4A5568] hover:bg-[#FBF4E3] hover:text-gold transition-all";
@@ -144,13 +159,18 @@ function Header() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-8">
         <div className="flex items-center gap-3">
           <Link to="/" className="flex items-center gap-2">
-            <span className="text-[20px] font-extrabold text-primary">المدرسة</span>
-            <span className="text-[20px] font-extrabold text-gold">الرمز</span>
+            <span className="text-[20px] font-extrabold text-primary">
+              {isArabic ? "المدرسة" : "Al-Ramz School"}
+            </span>
+
+            <span className="text-[20px] font-extrabold text-gold">
+              {isArabic ? "الرمز" : ""}
+            </span>
 
             <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
-              · التعلم العميق
+              {isArabic ? "· التعلم العميق" : "· Deep Learning"}
             </span>
-          </Link>
+        </Link>
           {LOGO_URL && (
             <img
               src={LOGO_URL}
@@ -162,55 +182,92 @@ function Header() {
           )}
         </div>
         <div className="flex flex-wrap items-center gap-1">
-          <Link to="/planning" className={linkCls} activeProps={{ className: `${linkCls} ${activeCls}` }}>
-            التخطيط
+          <Link
+            to="/planning"
+            className={linkCls}
+            activeProps={{ className: `${linkCls} ${activeCls}` }}
+          >
+            {isArabic ? "التخطيط" : "Planning"}
           </Link>
-          <Link to="/execute" className={linkCls} activeProps={{ className: `${linkCls} ${activeCls}` }}>
-            التنفيذ
+
+          <Link
+            to="/execute"
+            className={linkCls}
+            activeProps={{ className: `${linkCls} ${activeCls}` }}
+          >
+            {isArabic ? "التنفيذ" : "Execution"}
           </Link>
-          <Link to="/reflection" className={linkCls} activeProps={{ className: `${linkCls} ${activeCls}` }}>
-            التأمل
+
+          <Link
+            to="/reflection"
+            className={linkCls}
+            activeProps={{ className: `${linkCls} ${activeCls}` }}
+          >
+            {isArabic ? "التأمل" : "Reflection"}
           </Link>
-          <Link to="/lessons" className={linkCls} activeProps={{ className: `${linkCls} ${activeCls}` }}>
-            دروسي
+
+          <Link
+            to="/lessons"
+            className={linkCls}
+            activeProps={{ className: `${linkCls} ${activeCls}` }}
+          >
+            {isArabic ? "دروسي" : "My Lessons"}
           </Link>
-          <Link to="/dashboard" className={linkCls} activeProps={{ className: `${linkCls} ${activeCls}` }}>
-            لوحتي
+
+          <Link
+            to="/dashboard"
+            className={linkCls}
+            activeProps={{ className: `${linkCls} ${activeCls}` }}
+          >
+            {isArabic ? "لوحتي" : "Dashboard"}
           </Link>
-          <Link to="/absent" className={linkCls} activeProps={{ className: `${linkCls} ${activeCls}` }}>
-            الطالب الغائب
+
+          <Link
+            to="/absent"
+            className={linkCls}
+            activeProps={{ className: `${linkCls} ${activeCls}` }}
+          >
+            {isArabic ? "الطالب الغائب" : "Absent Student"}
           </Link>
 
           {isSupervisor && (
-            <>
-              <Link
-                to="/supervisor"
-                className={linkCls}
-                activeProps={{ className: `${linkCls} ${activeCls}` }}
-              >
-                الإشراف
-              </Link>
-              <Link
-                to="/admin"
-                className={`${linkCls} border border-gold/60 bg-gold/10 text-gold hover:bg-gold hover:text-white`}
-                activeProps={{ className: `${linkCls} ${activeCls}` }}
-              >
-                ⚙️ الإدارة
-              </Link>
-            </>
-          )}
+  <>
+    <Link
+      to="/supervisor"
+      className={linkCls}
+      activeProps={{ className: `${linkCls} ${activeCls}` }}
+    >
+      {isArabic ? "الإشراف" : "Supervision"}
+    </Link>
+
+    <Link
+      to="/admin"
+      className={`${linkCls} border border-gold/60 bg-gold/10 text-gold hover:bg-gold hover:text-white`}
+      activeProps={{ className: `${linkCls} ${activeCls}` }}
+    >
+      {isArabic ? "⚙️ الإدارة" : "⚙️ Admin"}
+    </Link>
+  </>
+)}
 
           <div className="mr-2 flex items-center gap-2 ps-2">
+            <button
+              type="button"
+              onClick={toggleLanguage}
+              className="rounded-lg border border-gold/60 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold hover:text-white"
+            >
+              🌐 {isArabic ? "English" : "العربية"}
+              </button>
             <NewLessonButton variant="header" />
             {identity && (
-              <button
-                onClick={() => void signOutAndRedirect()}
-                title={`${identity.name} — ${ROLE_LABEL[identity.role]}`}
-                className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
-              >
-                خروج
-              </button>
-            )}
+  <button
+    onClick={() => void signOutAndRedirect()}
+    title={`${identity.name} — ${ROLE_LABEL[identity.role]}`}
+    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
+  >
+    {isArabic ? "خروج" : "Sign Out"}
+  </button>
+)}
           </div>
 
 
@@ -277,19 +334,39 @@ function AuthGate({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen flex-col">
-        <Header />
-        <div className="flex-1">
-          <AuthGate>
-            <Outlet />
-          </AuthGate>
-        </div>
-        <Footer />
+      <UiLanguageProvider>
+        <AppLayout />
+      </UiLanguageProvider>
+    </QueryClientProvider>
+  );
+}
+
+function AppLayout() {
+  const { dir } = useUiLanguage();
+
+  return (
+    <div
+      className="flex min-h-screen flex-col"
+      dir={dir}
+    >
+      <Header />
+
+      <div className="flex-1">
+        <AuthGate>
+          <Outlet />
+        </AuthGate>
       </div>
 
-      <Toaster richColors position="top-center" dir="rtl" />
-    </QueryClientProvider>
+      <Footer />
+
+      <Toaster
+        richColors
+        position="top-center"
+        dir={dir}
+      />
+    </div>
   );
 }
