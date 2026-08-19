@@ -406,6 +406,7 @@ ${langInstruction(data.lang)}`;
           },
         ],
         maxTokens: 5000,
+        label: "presentation",
       })
     ).trim();
 

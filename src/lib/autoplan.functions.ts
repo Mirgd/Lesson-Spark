@@ -43,8 +43,16 @@ type Content =
   | { type: "text"; text: string }
   | { type: "image_url"; image_url: { url: string } };
 
-async function callGateway(content: string | Content[], maxTokens: number) {
-  return callAiGateway({ messages: [{ role: "user", content }], maxTokens });
+async function callGateway(
+  content: string | Content[],
+  maxTokens: number,
+  label?: string
+) {
+  return callAiGateway({
+    messages: [{ role: "user", content }],
+    maxTokens,
+    label,
+  });
 }
 
 function parseJson<T>(raw: string): T {
@@ -365,8 +373,11 @@ ${langInstruction(data.lang)}
         text: instruction,
       });
 
-      const raw = await callGateway(content, 7000);
-
+const raw = await callGateway(
+  content,
+  7000,
+  "complete-lesson"
+);
       const pick = (v: unknown) => {
         const o = (v ?? {}) as Record<string, unknown>;
 
@@ -429,6 +440,10 @@ export const readTextFromImages = createServerFn({ method: "POST" })
       type: "text",
       text: "هذه صفحات من كتاب مدرسي مصوّر. اكتب كل النص الظاهر فيها كما هو بالعربية، بدون أي تعليق أو تنسيق إضافي.",
     });
-    const raw = await callGateway(content, 5000);
+const raw = await callGateway(
+  content,
+  5000,
+  "pdf-ocr"
+);
     return { text: raw };
   });

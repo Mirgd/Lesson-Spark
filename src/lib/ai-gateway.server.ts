@@ -8,6 +8,7 @@ export interface AiCallOptions {
   messages: unknown[];
   model?: string;
   maxTokens?: number;
+  label?: string;
 }
 
 
@@ -198,6 +199,11 @@ async function callGemini(
     try {
       await waitForGeminiSlot();
 
+      // Usage tracing — does not expose prompts or API keys
+      console.log(
+        `[Gemini request] label=${opts.label ?? "unknown"} model=${model} attempt=${attempt}`
+      );
+
       res = await fetch(url, {
         method: "POST",
         headers: {
@@ -254,13 +260,13 @@ async function callGemini(
     // فشل الطلب
     const detail = (await res.text()).slice(0, 1000);
 
+    // لا نعيد المحاولة على 429 حتى لا نستهلك quota إضافية
     const retryable =
       res.status === 500 ||
       res.status === 502 ||
       res.status === 503 ||
       res.status === 504;
 
-    // إعادة المحاولة إذا كانت المشكلة مؤقتة
     if (retryable && attempt < maxAttempts) {
       const retryAfter = res.headers.get("retry-after");
 
@@ -269,8 +275,6 @@ async function callGemini(
           ? Number(retryAfter) * 1000
           : 0;
 
-      // مثال من Gemini:
-      // "Please retry in 57.053665594s."
       const retryMatch = detail.match(
         /please retry in\s+([\d.]+)s/i
       );
