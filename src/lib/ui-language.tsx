@@ -1,3 +1,5 @@
+import { uiTranslations } from "@/lib/ui-translations";
+
 import {
   createContext,
   useContext,
@@ -11,15 +13,21 @@ export type UiLanguage = "ar" | "en";
 
 const STORAGE_KEY = "lesson_spark_ui_language";
 
+type UiTranslations =
+  (typeof uiTranslations)[UiLanguage];
+
 type UiLanguageContextValue = {
   language: UiLanguage;
   setLanguage: (language: UiLanguage) => void;
   toggleLanguage: () => void;
   dir: "rtl" | "ltr";
+  t: UiTranslations;
 };
 
 const UiLanguageContext =
-  createContext<UiLanguageContextValue | null>(null);
+  createContext<UiLanguageContextValue | null>(
+    null
+  );
 
 export function UiLanguageProvider({
   children,
@@ -30,9 +38,8 @@ export function UiLanguageProvider({
     useState<UiLanguage>("ar");
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(
-      STORAGE_KEY
-    );
+    const saved =
+      window.localStorage.getItem(STORAGE_KEY);
 
     if (saved === "ar" || saved === "en") {
       setLanguageState(saved);
@@ -51,12 +58,16 @@ export function UiLanguageProvider({
   };
 
   const toggleLanguage = () => {
-    setLanguage(language === "ar" ? "en" : "ar");
+    setLanguage(
+      language === "ar" ? "en" : "ar"
+    );
   };
 
-const dir: "rtl" | "ltr" =
-  language === "ar" ? "rtl" : "ltr";
-  
+  const dir: "rtl" | "ltr" =
+    language === "ar" ? "rtl" : "ltr";
+
+  const t = uiTranslations[language];
+
   useEffect(() => {
     document.documentElement.lang = language;
     document.documentElement.dir = dir;
@@ -68,8 +79,9 @@ const dir: "rtl" | "ltr" =
       setLanguage,
       toggleLanguage,
       dir,
+      t,
     }),
-    [language, dir]
+    [language, dir, t]
   );
 
   return (
@@ -80,7 +92,8 @@ const dir: "rtl" | "ltr" =
 }
 
 export function useUiLanguage() {
-  const context = useContext(UiLanguageContext);
+  const context =
+    useContext(UiLanguageContext);
 
   if (!context) {
     throw new Error(
