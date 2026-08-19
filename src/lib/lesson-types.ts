@@ -132,6 +132,47 @@ export const QUESTION_BANKS: Record<PhaseId, string[]> = {
     "كيف تُقيّم فهمك من 1 إلى 10؟ ولماذا؟",
   ],
 };
+export const QUESTION_BANKS_EN: Record<PhaseId, string[]> = {
+  engage: [
+    "What do you already know about {topic}?",
+    "Where have you encountered {topic} in your daily life?",
+    "What do you expect to learn today?",
+    "What makes you curious about {topic}?",
+    "What do you think would happen if...?",
+  ],
+
+  explore: [
+    "What have you noticed so far?",
+    "Why do you think this happened?",
+    "What surprised you about the result?",
+    "How does your result differ from another group's result?",
+    "What would you change if you repeated the investigation?",
+  ],
+
+  explain: [
+    "How would you explain what you observed in your own words?",
+    "How is what we did connected to what you learned before?",
+    "Do you agree with your classmate's explanation? Why?",
+    "What is the correct scientific term for what you described?",
+    "What evidence supports your explanation?",
+  ],
+
+  elaborate: [
+    "How can you apply what you learned to this new situation?",
+    "How is this situation different from the first one?",
+    "Design a solution to this problem using what you learned.",
+    "How could you use this concept in your daily life?",
+    "Which of the suggested solutions is best, and why?",
+  ],
+
+  evaluate: [
+    "What is the most important thing you learned today?",
+    "What is still unclear to you?",
+    "How will you use what you learned outside school?",
+    "What would you like to learn more about?",
+    "How would you rate your understanding from 1 to 10, and why?",
+  ],
+};
 
 /** صورة من صفحات الكتاب المرفوع — نخزّن رقم الصفحة فقط */
 export interface BookImage {

@@ -1,3 +1,4 @@
+import { useUiLanguage } from "@/lib/ui-language";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -35,6 +36,9 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
+  const { language } = useUiLanguage();
+  const isArabic = language === "ar";
+
   const { loading, identity } = useSession();
   const navigate = useNavigate();
   const [rows, setRows] = useState<PlanRow[]>([]);
@@ -48,31 +52,55 @@ function Dashboard() {
 
   const refresh = useCallback(async () => {
     if (!name) return;
+
     try {
       setRows(await listPlans());
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر تحميل الخطط");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : isArabic
+            ? "تعذّر تحميل الخطط"
+            : "Unable to load lesson plans"
+      );
     } finally {
       setBusy(false);
     }
-  }, [name]);
+  }, [name, isArabic]);
 
   useEffect(() => {
     if (loading) return;
+
     if (!name) {
       window.location.replace("/auth");
       return;
     }
+
     refresh();
   }, [loading, name, refresh]);
 
   const subjects = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.subject).filter(Boolean) as string[])),
-    [rows],
+    () =>
+      Array.from(
+        new Set(
+          rows
+            .map((r) => r.subject)
+            .filter(Boolean) as string[]
+        )
+      ),
+    [rows]
   );
+
   const grades = useMemo(
-    () => Array.from(new Set(rows.map((r) => r.grade).filter(Boolean) as string[])),
-    [rows],
+    () =>
+      Array.from(
+        new Set(
+          rows
+            .map((r) => r.grade)
+            .filter(Boolean) as string[]
+        )
+      ),
+    [rows]
   );
 
   const filtered = rows.filter(
@@ -80,71 +108,133 @@ function Dashboard() {
       (!q || (r.topic ?? "").includes(q)) &&
       (!status || r.status === status) &&
       (!subject || r.subject === subject) &&
-      (!grade || r.grade === grade),
+      (!grade || r.grade === grade)
   );
 
   const counts = {
     all: rows.length,
-    draft: rows.filter((r) => r.status === "draft").length,
-    complete: rows.filter((r) => r.status === "complete").length,
+    draft: rows.filter(
+      (r) => r.status === "draft"
+    ).length,
+    complete: rows.filter(
+      (r) => r.status === "complete"
+    ).length,
   };
 
   const open = async (row: PlanRow) => {
     try {
       const fresh = await getPlan(row.id);
+
       if (!fresh) {
-        toast.error("لم يتم العثور على الخطة");
+        toast.error(
+          isArabic
+            ? "لم يتم العثور على الخطة"
+            : "Lesson plan not found"
+        );
         return;
       }
-      applyBundleLocally(rowToBundle(fresh));
-      navigate({ to: "/planning" });
+
+      applyBundleLocally(
+        rowToBundle(fresh)
+      );
+
+      navigate({
+        to: "/planning",
+      });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر فتح الخطة");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : isArabic
+            ? "تعذّر فتح الخطة"
+            : "Unable to open the lesson plan"
+      );
     }
   };
 
   const newPlan = () => {
-    localStorage.setItem("rz_current", JSON.stringify(emptyPlan()));
-    navigate({ to: "/planning" });
+    localStorage.setItem(
+      "rz_current",
+      JSON.stringify(emptyPlan())
+    );
+
+    navigate({
+      to: "/planning",
+    });
   };
 
-  if (loading || busy)
+  if (loading || busy) {
     return (
       <main className="flex min-h-[50vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </main>
     );
+  }
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-primary">مرحباً {name} 👋</h1>
+          <h1 className="text-2xl font-black text-primary">
+            {isArabic
+              ? `مرحباً ${name} 👋`
+              : `Welcome, ${name} 👋`}
+          </h1>
+
           <p className="mt-1 text-sm text-muted-foreground">
-            {[identity?.subject, identity?.stage, identity?.school].filter(Boolean).join(" · ") ||
-              "يمكنك تحديث بياناتك من صفحة الاسم"}
+            {[identity?.subject, identity?.stage, identity?.school]
+              .filter(Boolean)
+              .join(" · ") ||
+              (isArabic
+                ? "يمكنك تحديث بياناتك من صفحة الاسم"
+                : "You can update your information from your profile page")}
           </p>
         </div>
+
         <button
           onClick={newPlan}
           className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
         >
-          <Plus className="h-4 w-4" /> خطة جديدة
+          <Plus className="h-4 w-4" />
+
+          {isArabic
+            ? "خطة جديدة"
+            : "New Plan"}
         </button>
       </div>
 
       <div className="mb-5 grid grid-cols-3 gap-3">
         {[
-          { label: "الكل", value: counts.all },
-          { label: "مسودة", value: counts.draft },
-          { label: "مكتملة", value: counts.complete },
+          {
+            label: isArabic
+              ? "الكل"
+              : "All",
+            value: counts.all,
+          },
+          {
+            label: isArabic
+              ? "مسودة"
+              : "Draft",
+            value: counts.draft,
+          },
+          {
+            label: isArabic
+              ? "مكتملة"
+              : "Complete",
+            value: counts.complete,
+          },
         ].map((c) => (
           <div
             key={c.label}
             className="rounded-xl border bg-card p-4 text-center shadow-[var(--shadow-soft)]"
           >
-            <div className="text-2xl font-black text-primary">{c.value}</div>
-            <div className="text-xs text-muted-foreground">{c.label}</div>
+            <div className="text-2xl font-black text-primary">
+              {c.value}
+            </div>
+
+            <div className="text-xs text-muted-foreground">
+              {c.label}
+            </div>
           </div>
         ))}
       </div>
@@ -152,50 +242,101 @@ function Dashboard() {
       <div className="mb-5 flex flex-wrap gap-2">
         <input
           value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="🔍 بحث بالموضوع..."
+          onChange={(e) =>
+            setQ(e.target.value)
+          }
+          placeholder={
+            isArabic
+              ? "🔍 بحث بالموضوع..."
+              : "🔍 Search by topic..."
+          }
           className="min-w-[180px] flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
         />
+
         <select
           value={subject}
-          onChange={(e) => setSubject(e.target.value)}
+          onChange={(e) =>
+            setSubject(e.target.value)
+          }
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">المادة</option>
+          <option value="">
+            {isArabic
+              ? "المادة"
+              : "Subject"}
+          </option>
+
           {subjects.map((s) => (
-            <option key={s} value={s}>
+            <option
+              key={s}
+              value={s}
+            >
               {s}
             </option>
           ))}
         </select>
+
         <select
           value={grade}
-          onChange={(e) => setGrade(e.target.value)}
+          onChange={(e) =>
+            setGrade(e.target.value)
+          }
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">الصف</option>
+          <option value="">
+            {isArabic
+              ? "الصف"
+              : "Grade"}
+          </option>
+
           {grades.map((s) => (
-            <option key={s} value={s}>
+            <option
+              key={s}
+              value={s}
+            >
               {s}
             </option>
           ))}
         </select>
+
         <select
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) =>
+            setStatus(e.target.value)
+          }
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">الحالة</option>
-          <option value="draft">مسودة</option>
-          <option value="complete">مكتملة</option>
+          <option value="">
+            {isArabic
+              ? "الحالة"
+              : "Status"}
+          </option>
+
+          <option value="draft">
+            {isArabic
+              ? "مسودة"
+              : "Draft"}
+          </option>
+
+          <option value="complete">
+            {isArabic
+              ? "مكتملة"
+              : "Complete"}
+          </option>
         </select>
       </div>
 
-      <h2 className="mb-3 text-lg font-bold text-primary">خططي الدراسية</h2>
+      <h2 className="mb-3 text-lg font-bold text-primary">
+        {isArabic
+          ? "خططي الدراسية"
+          : "My Lesson Plans"}
+      </h2>
 
       {filtered.length === 0 ? (
         <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          لا توجد خطط بعد — ابدأ بخطة جديدة.
+          {isArabic
+            ? "لا توجد خطط بعد — ابدأ بخطة جديدة."
+            : "No lesson plans yet — start by creating a new plan."}
         </p>
       ) : (
         <div className="space-y-3">
@@ -206,11 +347,20 @@ function Dashboard() {
             >
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
-                  <h3 className="text-base font-bold text-primary">{row.topic || "بدون عنوان"}</h3>
+                  <h3 className="text-base font-bold text-primary">
+                    {row.topic ||
+                      (isArabic
+                        ? "بدون عنوان"
+                        : "Untitled Lesson")}
+                  </h3>
+
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {[row.subject, row.grade].filter(Boolean).join(" · ")}
+                    {[row.subject, row.grade]
+                      .filter(Boolean)
+                      .join(" · ")}
                   </p>
                 </div>
+
                 <span
                   className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                     row.status === "complete"
@@ -218,49 +368,112 @@ function Dashboard() {
                       : "bg-amber-100 text-amber-700"
                   }`}
                 >
-                  {row.status === "complete" ? "مكتملة" : "مسودة"}
+                  {row.status === "complete"
+                    ? isArabic
+                      ? "مكتملة"
+                      : "Complete"
+                    : isArabic
+                      ? "مسودة"
+                      : "Draft"}
                 </span>
               </div>
+
               <div className="mt-3 flex items-center gap-2">
                 <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full bg-gold" style={{ width: `${row.completion_pct}%` }} />
+                  <div
+                    className="h-full bg-gold"
+                    style={{
+                      width: `${row.completion_pct}%`,
+                    }}
+                  />
                 </div>
+
                 <span className="text-xs font-bold text-muted-foreground">
                   {row.completion_pct}%
                 </span>
               </div>
+
               <p className="mt-2 text-[11px] text-muted-foreground">
-                آخر تعديل: {relativeTime(row.updated_at)}
+                {isArabic
+                  ? "آخر تعديل:"
+                  : "Last updated:"}{" "}
+                {relativeTime(
+                  row.updated_at
+                )}
               </p>
-              <PlanReviewBadge planId={row.id} />
+
+              <PlanReviewBadge
+                planId={row.id}
+              />
 
               <div className="mt-3 flex gap-2">
                 <button
-                  onClick={() => open(row)}
+                  onClick={() =>
+                    open(row)
+                  }
                   className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent"
                 >
-                  <FolderOpen className="h-3.5 w-3.5" /> فتح
+                  <FolderOpen className="h-3.5 w-3.5" />
+
+                  {isArabic
+                    ? "فتح"
+                    : "Open"}
                 </button>
+
                 <button
                   onClick={async () => {
-                    await duplicatePlan(row.id);
+                    await duplicatePlan(
+                      row.id
+                    );
+
                     await refresh();
-                    toast.success("تم نسخ الخطة");
+
+                    toast.success(
+                      isArabic
+                        ? "تم نسخ الخطة"
+                        : "Lesson plan duplicated"
+                    );
                   }}
                   className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent"
                 >
-                  <Copy className="h-3.5 w-3.5" /> نسخ
+                  <Copy className="h-3.5 w-3.5" />
+
+                  {isArabic
+                    ? "نسخ"
+                    : "Duplicate"}
                 </button>
+
                 <button
                   onClick={async () => {
-                    if (!confirm("حذف هذه الخطة؟")) return;
-                    await deletePlan(row.id);
+                    if (
+                      !confirm(
+                        isArabic
+                          ? "حذف هذه الخطة؟"
+                          : "Delete this lesson plan?"
+                      )
+                    ) {
+                      return;
+                    }
+
+                    await deletePlan(
+                      row.id
+                    );
+
                     await refresh();
-                    toast.success("تم الحذف");
+
+                    toast.success(
+                      isArabic
+                        ? "تم الحذف"
+                        : "Lesson plan deleted"
+                    );
                   }}
                   className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                 >
-                  <Trash2 className="h-3.5 w-3.5" /> حذف
+                  <Trash2 className="h-3.5 w-3.5" />
+
+                  {isArabic
+                    ? "حذف"
+                    : "Delete"}
                 </button>
               </div>
             </article>

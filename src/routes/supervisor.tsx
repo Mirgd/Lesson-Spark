@@ -1,3 +1,4 @@
+import { useUiLanguage } from "@/lib/ui-language";
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -41,6 +42,9 @@ export const Route = createFileRoute("/supervisor")({
 const STATUS_LABEL: Record<string, string> = { draft: "مسودة", complete: "مكتملة" };
 
 function SupervisorPage() {
+  const { language } = useUiLanguage();
+  const isArabic = language === "ar";
+
   const { identity } = useSession();
   const me = identity?.user.id ?? "";
 
@@ -56,6 +60,17 @@ function SupervisorPage() {
   const [tab, setTab] = useState<"all" | "pending" | "mine">("all");
   const [openPlan, setOpenPlan] = useState<SupervisedPlan | null>(null);
 
+  const statusLabel = (value: string) => {
+  if (value === "complete") {
+    return isArabic ? "مكتملة" : "Complete";
+  }
+
+  if (value === "draft") {
+    return isArabic ? "مسودة" : "Draft";
+  }
+
+  return value;
+};
   const refresh = useCallback(async () => {
     setBusy(true);
     try {
@@ -64,11 +79,16 @@ function SupervisorPage() {
       setPlans(p);
       setReviews(r);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر تحميل بيانات الإشراف");
-    } finally {
+toast.error(
+  e instanceof Error
+    ? e.message
+    : isArabic
+      ? "تعذّر تحميل بيانات الإشراف"
+      : "Unable to load supervision data"
+);    } finally {
       setBusy(false);
     }
-  }, []);
+  }, [isArabic]);
 
   useEffect(() => {
     void refresh();
@@ -83,9 +103,12 @@ function SupervisorPage() {
   const teacherName = useCallback(
     (id: string) => {
       const t = teacherById.get(id);
-      return (t?.full_name || t?.email || "مستخدم غير معروف").trim();
-    },
-    [teacherById],
+return (
+  t?.full_name ||
+  t?.email ||
+  (isArabic ? "مستخدم غير معروف" : "Unknown user")
+).trim();    },
+    [teacherById, isArabic],
   );
 
   const byPlan = useMemo(() => {
@@ -133,8 +156,9 @@ function SupervisorPage() {
   });
 
   const exportReviews = () => {
-    const head = ["المعلم/ة", "الموضوع", "المادة", "الصف", "التقييم", "الملاحظة", "التاريخ"];
-    const planOf = (id: string) => plans.find((p) => p.id === id);
+const head = isArabic
+  ? ["المعلم/ة", "الموضوع", "المادة", "الصف", "التقييم", "الملاحظة", "التاريخ"]
+  : ["Teacher", "Topic", "Subject", "Grade", "Rating", "Comment", "Date"];    const planOf = (id: string) => plans.find((p) => p.id === id);
     const body = reviews.map((r) => {
       const p = planOf(r.plan_id);
       return [
@@ -144,8 +168,7 @@ function SupervisorPage() {
         p?.grade ?? "",
         String(r.rating),
         (r.comment || "").replace(/[\n,]/g, " "),
-        new Date(r.created_at).toLocaleDateString("ar"),
-      ].join(",");
+new Date(r.created_at).toLocaleDateString(isArabic ? "ar" : "en"),      ].join(",");
     });
     const blob = new Blob(["\uFEFF" + [head.join(","), ...body].join("\n")], {
       type: "text/csv;charset=utf-8",
@@ -170,37 +193,54 @@ function SupervisorPage() {
       <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-black text-primary">
-            <ClipboardCheck className="h-6 w-6 text-gold" /> لوحة الإشراف
-          </h1>
+<ClipboardCheck className="h-6 w-6 text-gold" />
+{isArabic ? "لوحة الإشراف" : "Supervision Dashboard"}          </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            كل المعلمين/ات وخطط دروسهم المحفوظة في حساباتهم — قراءة وتقييم فقط.
-            {identity ? ` (المُقيّم: ${identity.name})` : ""}
-          </p>
+  {isArabic
+    ? "كل المعلمين/ات وخطط دروسهم المحفوظة في حساباتهم — قراءة وتقييم فقط."
+    : "View teachers and their saved lesson plans — review and evaluation only."}
+  {identity
+    ? isArabic
+      ? ` (المُقيّم: ${identity.name})`
+      : ` (Reviewer: ${identity.name})`
+    : ""}
+</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => void refresh()}
             className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-accent"
           >
-            <RefreshCw className="h-4 w-4" /> تحديث
-          </button>
+<RefreshCw className="h-4 w-4" />
+{isArabic ? "تحديث" : "Refresh"}          </button>
           <button
             onClick={exportReviews}
             disabled={reviews.length === 0}
             className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50"
           >
-            تصدير التقييمات
-          </button>
+{isArabic ? "تصدير التقييمات" : "Export Reviews"}          </button>
         </div>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: "عدد المعلمين/ات", value: stats.teachers },
-          { label: "إجمالي الخطط", value: stats.plans },
-          { label: "بانتظار التقييم", value: stats.pending },
-          { label: "متوسط التقييم", value: stats.avg },
-        ].map((c) => (
+  {
+    label: isArabic ? "عدد المعلمين/ات" : "Teachers",
+    value: stats.teachers,
+  },
+  {
+    label: isArabic ? "إجمالي الخطط" : "Total Plans",
+    value: stats.plans,
+  },
+  {
+    label: isArabic ? "بانتظار التقييم" : "Pending Review",
+    value: stats.pending,
+  },
+  {
+    label: isArabic ? "متوسط التقييم" : "Average Rating",
+    value: stats.avg,
+  },
+].map((c) => (
           <div
             key={c.label}
             className="rounded-xl border bg-card p-4 text-center shadow-[var(--shadow-soft)]"
@@ -214,10 +254,12 @@ function SupervisorPage() {
       {/* قائمة المعلمات */}
       <section className="mb-6 rounded-xl border bg-card p-4 shadow-[var(--shadow-soft)]">
         <h2 className="mb-3 flex items-center gap-2 text-sm font-bold text-primary">
-          <Users className="h-4 w-4 text-gold" /> المعلمات والمعلمون
-        </h2>
+<Users className="h-4 w-4 text-gold" />
+{isArabic ? "المعلمات والمعلمون" : "Teachers"}        </h2>
         {teachers.length === 0 ? (
-          <p className="text-xs text-muted-foreground">لا يوجد معلمون مسجَّلون بعد.</p>
+          <p className="text-xs text-muted-foreground">{isArabic
+  ? "لا يوجد معلمون مسجَّلون بعد."
+  : "No teachers are registered yet."}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             <button
@@ -226,7 +268,7 @@ function SupervisorPage() {
                 teacherId === "" ? "border-gold bg-gold/15 text-gold" : "hover:bg-accent"
               }`}
             >
-              الكل ({teachers.length})
+              {isArabic ? "الكل" : "All"} ({teachers.length})
             </button>
             {teachers.map((t) => {
               const count = plans.filter((p) => p.user_id === t.id).length;
@@ -241,7 +283,7 @@ function SupervisorPage() {
                   {t.full_name || t.email}
                   <span className="block text-[10px] font-medium text-muted-foreground">
                     {[t.subject, t.stage, t.school, t.branch].filter(Boolean).join(" · ") || "—"} ·{" "}
-                    {count} خطة
+                    {count} {count} {isArabic ? "خطة" : count === 1 ? "plan" : "plans"}
                   </span>
                 </button>
               );
@@ -252,12 +294,27 @@ function SupervisorPage() {
 
       <div className="mb-4 flex flex-wrap gap-2">
         {(
-          [
-            { v: "all", t: `الكل (${stats.plans})` },
-            { v: "pending", t: `بانتظار التقييم (${stats.pending})` },
-            { v: "mine", t: `قيّمتها (${stats.mine})` },
-          ] as const
-        ).map((o) => (
+  [
+    {
+      v: "all",
+      t: isArabic
+        ? `الكل (${stats.plans})`
+        : `All (${stats.plans})`,
+    },
+    {
+      v: "pending",
+      t: isArabic
+        ? `بانتظار التقييم (${stats.pending})`
+        : `Pending Review (${stats.pending})`,
+    },
+    {
+      v: "mine",
+      t: isArabic
+        ? `قيّمتها (${stats.mine})`
+        : `Reviewed by Me (${stats.mine})`,
+    },
+  ] as const
+).map((o) => (
           <button
             key={o.v}
             onClick={() => setTab(o.v)}
@@ -276,15 +333,20 @@ function SupervisorPage() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="🔍 بحث بالموضوع أو المعلم/ة..."
-          className="min-w-[180px] flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
+placeholder={
+  isArabic
+    ? "🔍 بحث بالموضوع أو المعلم/ة..."
+    : "🔍 Search by topic or teacher..."
+}          className="min-w-[180px] flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
         />
         <select
           value={subject}
           onChange={(e) => setSubject(e.target.value)}
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">كل المواد</option>
+<option value="">
+  {isArabic ? "كل المواد" : "All Subjects"}
+</option>
           {subjects.map((s) => (
             <option key={s} value={s}>
               {s}
@@ -296,7 +358,9 @@ function SupervisorPage() {
           onChange={(e) => setGrade(e.target.value)}
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">كل الصفوف</option>
+<option value="">
+  {isArabic ? "كل الصفوف" : "All Grades"}
+</option>
           {grades.map((g) => (
             <option key={g} value={g}>
               {g}
@@ -308,15 +372,25 @@ function SupervisorPage() {
           onChange={(e) => setStatus(e.target.value)}
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">كل الحالات</option>
-          <option value="draft">مسودة</option>
-          <option value="complete">مكتملة</option>
+          <option value="">
+  {isArabic ? "كل الحالات" : "All Statuses"}
+</option>
+
+<option value="draft">
+  {isArabic ? "مسودة" : "Draft"}
+</option>
+
+<option value="complete">
+  {isArabic ? "مكتملة" : "Complete"}
+</option>
         </select>
       </div>
 
       {filtered.length === 0 ? (
         <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          لا توجد خطط مطابقة.
+         {isArabic
+  ? "لا توجد خطط مطابقة."
+  : "No matching lesson plans."}
         </p>
       ) : (
         <div className="space-y-3">
@@ -333,8 +407,7 @@ function SupervisorPage() {
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
                     <h2 className="text-base font-bold text-primary">
-                      {row.topic || "بدون عنوان"}
-                    </h2>
+{row.topic || (isArabic ? "بدون عنوان" : "Untitled Lesson")}                    </h2>
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {[teacherName(row.user_id), row.subject, row.grade, row.unit]
                         .filter(Boolean)
@@ -348,29 +421,37 @@ function SupervisorPage() {
                       </span>
                     ) : (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-700">
-                        بانتظار التقييم
-                      </span>
+{isArabic ? "بانتظار التقييم" : "Pending Review"}                      </span>
                     )}
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-                      {STATUS_LABEL[row.status] ?? row.status}
+                        {statusLabel(row.status)}
                     </span>
                     <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
                       {row.completion_pct}%
                     </span>
                     <span className="rounded-full border px-2 py-0.5 text-[11px] font-bold text-muted-foreground">
-                      {row.content_language === "en" ? "English" : "عربي"}
+                      {row.content_language === "en"
+                              ? "English"
+                              : isArabic
+                                ? "عربي"
+                                : "Arabic"}
                     </span>
                   </div>
                 </div>
                 <p className="mt-2 text-[11px] text-muted-foreground">
-                  {row.date ? `تاريخ الدرس: ${row.date} · ` : ""}آخر تعديل:{" "}
+                  {row.date
+                    ? isArabic
+                      ? `تاريخ الدرس: ${row.date} · `
+                      : `Lesson date: ${row.date} · `
+                    : ""}
+                  {isArabic ? "آخر تعديل:" : "Last updated:"}{" "}
                   {relativeTime(row.updated_at)}
                 </p>
                 <button
                   onClick={() => setOpenPlan(row)}
                   className="mt-3 rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
                 >
-                  عرض الخطة كاملة
+                 {isArabic ? "عرض الخطة كاملة" : "View Full Plan"}
                 </button>
                 <PlanReview planId={row.id} teacherId={row.user_id} onSaved={() => void refresh()} />
               </article>
@@ -400,28 +481,64 @@ function PlanViewer({
   teacher: string;
   onClose: () => void;
 }) {
-  const phases = Array.isArray(plan.phases) ? (plan.phases as PhaseData[]) : [];
-  const outcomes = Array.isArray(plan.outcomes) ? (plan.outcomes as string[]) : [];
+  const { language } = useUiLanguage();
+  const isArabic = language === "ar";
+
+  const phases = Array.isArray(plan.phases)
+    ? (plan.phases as PhaseData[])
+    : [];
+
+  const outcomes = Array.isArray(plan.outcomes)
+    ? (plan.outcomes as string[])
+    : [];
+
   const homework = (plan.homework ?? null) as HomeworkData | null;
+
   const isEn = plan.content_language === "en";
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
-      <div className="w-full max-w-3xl rounded-2xl border bg-card p-5 shadow-lg">
+      <div
+        className="w-full max-w-3xl rounded-2xl border bg-card p-5 shadow-lg"
+        dir={isArabic ? "rtl" : "ltr"}
+      >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-black text-primary">{plan.topic || "بدون عنوان"}</h2>
+            <h2 className="text-lg font-black text-primary">
+              {plan.topic ||
+                (isArabic
+                  ? "بدون عنوان"
+                  : "Untitled Lesson")}
+            </h2>
+
             <p className="mt-1 text-xs text-muted-foreground">
-              {[teacher, plan.subject, plan.grade, plan.unit, plan.date]
+              {[
+                teacher,
+                plan.subject,
+                plan.grade,
+                plan.unit,
+                plan.date,
+              ]
                 .filter(Boolean)
                 .join(" · ")}{" "}
-              · {isEn ? "English" : "عربي"} · قراءة فقط
+              ·{" "}
+              {isEn
+                ? "English"
+                : isArabic
+                  ? "عربي"
+                  : "Arabic"}{" "}
+              ·{" "}
+              {isArabic
+                ? "قراءة فقط"
+                : "Read Only"}
             </p>
           </div>
+
           <button
             onClick={onClose}
             className="rounded-lg border p-2 text-muted-foreground hover:bg-accent"
-            title="إغلاق"
+            title={isArabic ? "إغلاق" : "Close"}
+            aria-label={isArabic ? "إغلاق" : "Close"}
           >
             <X className="h-4 w-4" />
           </button>
@@ -429,8 +546,16 @@ function PlanViewer({
 
         {plan.objectives && (
           <section className="mb-4">
-            <h3 className="mb-1 text-sm font-bold text-primary">الأهداف</h3>
-            <p className="whitespace-pre-wrap text-sm" dir={isEn ? "ltr" : "rtl"}>
+            <h3 className="mb-1 text-sm font-bold text-primary">
+              {isArabic
+                ? "الأهداف"
+                : "Objectives"}
+            </h3>
+
+            <p
+              className="whitespace-pre-wrap text-sm"
+              dir={isEn ? "ltr" : "rtl"}
+            >
               {plan.objectives}
             </p>
           </section>
@@ -438,8 +563,16 @@ function PlanViewer({
 
         {outcomes.length > 0 && (
           <section className="mb-4">
-            <h3 className="mb-1 text-sm font-bold text-primary">نواتج التعلم</h3>
-            <ul className="list-inside list-disc space-y-1 text-sm" dir={isEn ? "ltr" : "rtl"}>
+            <h3 className="mb-1 text-sm font-bold text-primary">
+              {isArabic
+                ? "نواتج التعلم"
+                : "Learning Outcomes"}
+            </h3>
+
+            <ul
+              className="list-inside list-disc space-y-1 text-sm"
+              dir={isEn ? "ltr" : "rtl"}
+            >
               {outcomes.map((o, i) => (
                 <li key={i}>{o}</li>
               ))}
@@ -449,56 +582,131 @@ function PlanViewer({
 
         <section className="space-y-3">
           {phases.map((ph) => {
-            const meta = PHASES.find((m) => m.id === ph.id);
+            const meta = PHASES.find(
+              (m) => m.id === ph.id
+            );
+
             return (
-              <div key={ph.id} className="rounded-xl border p-3">
+              <div
+                key={ph.id}
+                className="rounded-xl border p-3"
+              >
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-bold" style={{ color: meta?.color }}>
-                    {meta?.nameAr} · {meta?.nameEn}
+                  <span
+                    className="text-sm font-bold"
+                    style={{
+                      color: meta?.color,
+                    }}
+                  >
+                    {meta
+                      ? isArabic
+                        ? `${meta.nameAr} · ${meta.nameEn}`
+                        : meta.nameEn
+                      : ph.id}
                   </span>
-                  <span className="text-[11px] text-muted-foreground">{ph.duration} دقيقة</span>
+
+                  <span className="text-[11px] text-muted-foreground">
+                    {ph.duration}{" "}
+                    {isArabic
+                      ? "دقيقة"
+                      : "min"}
+                  </span>
                 </div>
-                <div className="space-y-2 text-sm" dir={isEn ? "ltr" : "rtl"}>
+
+                <div
+                  className="space-y-2 text-sm"
+                  dir={isEn ? "ltr" : "rtl"}
+                >
                   {ph.teacherActivity && (
                     <p className="whitespace-pre-wrap">
-                      <span className="font-bold text-primary">المعلم/ة: </span>
+                      <span className="font-bold text-primary">
+                        {isArabic
+                          ? "المعلم/ة: "
+                          : "Teacher: "}
+                      </span>
+
                       {ph.teacherActivity}
                     </p>
                   )}
+
                   {ph.teacherQuestions && (
                     <p className="whitespace-pre-wrap text-muted-foreground">
                       {ph.teacherQuestions}
                     </p>
                   )}
+
                   {ph.studentActivity && (
                     <p className="whitespace-pre-wrap">
-                      <span className="font-bold text-gold">الطالب: </span>
+                      <span className="font-bold text-gold">
+                        {isArabic
+                          ? "الطالب: "
+                          : "Student: "}
+                      </span>
+
                       {ph.studentActivity}
                     </p>
                   )}
-                  {!ph.teacherActivity && !ph.studentActivity && (
-                    <p className="text-xs text-muted-foreground">لم تُكتب هذه المرحلة بعد.</p>
-                  )}
+
+                  {!ph.teacherActivity &&
+                    !ph.studentActivity && (
+                      <p className="text-xs text-muted-foreground">
+                        {isArabic
+                          ? "لم تُكتب هذه المرحلة بعد."
+                          : "This phase has not been completed yet."}
+                      </p>
+                    )}
                 </div>
               </div>
             );
           })}
         </section>
 
-        {homework && (homework.teacherNote || homework.studentText) && (
-          <section className="mt-4 rounded-xl border p-3">
-            <h3 className="mb-1 text-sm font-bold text-primary">الواجب</h3>
-            <div className="space-y-1 text-sm" dir={isEn ? "ltr" : "rtl"}>
-              {homework.teacherNote && <p className="whitespace-pre-wrap">{homework.teacherNote}</p>}
-              {homework.studentText && (
-                <p className="whitespace-pre-wrap text-muted-foreground">{homework.studentText}</p>
-              )}
-            </div>
-          </section>
-        )}
+        {homework &&
+          (homework.teacherNote ||
+            homework.studentText) && (
+            <section className="mt-4 rounded-xl border p-3">
+              <h3 className="mb-1 text-sm font-bold text-primary">
+                {isArabic
+                  ? "الواجب"
+                  : "Homework"}
+              </h3>
+
+              <div
+                className="space-y-1 text-sm"
+                dir={isEn ? "ltr" : "rtl"}
+              >
+                {homework.teacherNote && (
+                  <p className="whitespace-pre-wrap">
+                    <span className="font-bold text-primary">
+                      {isArabic
+                        ? "للمعلم: "
+                        : "Teacher: "}
+                    </span>
+
+                    {homework.teacherNote}
+                  </p>
+                )}
+
+                {homework.studentText && (
+                  <p className="whitespace-pre-wrap text-muted-foreground">
+                    <span className="font-bold text-gold">
+                      {isArabic
+                        ? "للطالب: "
+                        : "Student: "}
+                    </span>
+
+                    {homework.studentText}
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
 
         <div className="mt-5 border-t pt-4">
-          <PlanReview planId={plan.id} teacherId={plan.user_id} />
+          <PlanReview
+            planId={plan.id}
+            teacherId={plan.user_id}
+          />
         </div>
       </div>
     </div>
