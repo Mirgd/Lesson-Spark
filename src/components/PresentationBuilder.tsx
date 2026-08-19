@@ -14,21 +14,24 @@ import {
 import {
   extractPdfAsImages,
   useSharedFile,
-  pool,
   setLastPdfFile,
   getCurrentFileId,
 } from "@/lib/pdf-images";
-
-import { analyzePagesForPhase } from "@/lib/vision.functions";
+import {
+  planLang,
+  type LessonPlan,
+  useCurriculum,
+} from "@/lib/lesson-types";
+import { analyzePresentationFromText } from "@/lib/vision.functions";
 import { clearFileArtifacts } from "@/lib/lesson-reset";
 import { SlideView } from "@/components/SlideView";
-import { planLang, type LessonPlan } from "@/lib/lesson-types";
 import { reportAiError } from "@/lib/ai-error";
 import { SharedFileBadge } from "@/components/SharedFileBadge";
 
 const PURPLE = "#5D3FA0";
 
 export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
+  const { text: curriculumText } = useCurriculum();
   const [slides, setSlides] = usePresentation();
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(0);
@@ -55,54 +58,51 @@ const run = async (file: File) => {
       setTotal(t);
     });
 
+    // حفظ صور صفحات الكتاب محلياً
     await clearPageImages();
 
     for (const p of pages) {
       await putPageImage(p.page, p.dataUrl, fileId);
     }
 
+    // إذا تغيّر الملف أثناء المعالجة، أوقف العملية
     if (getCurrentFileId() !== fileId) return;
 
-    setDone(0);
-    setTotal(pages.length);
-    setStatus("جارٍ تحليل محتوى الصفحات...");
+    if (!pages.length) {
+      throw new Error("لم يتم العثور على صفحات في ملف PDF.");
+    }
 
-    const analyzed: AnalyzedPage[] = [];
-
-    const BATCH_SIZE = 2;
-
-    for (let i = 0; i < pages.length; i += BATCH_SIZE) {
-      if (getCurrentFileId() !== fileId) return;
-
-      const batch = pages.slice(i, i + BATCH_SIZE);
-
-      setStatus(
-        `جارٍ تحليل الصفحات ${batch[0].page} إلى ${
-          batch[batch.length - 1].page
-        } من ${pages.length}...`
+    if (!curriculumText.trim()) {
+      throw new Error(
+        "لم يتم العثور على نص المقرر. ارفع ملف الدرس من قسم تحميل المقرر أولاً."
       );
+    }
 
-      const r = await analyzePagesForPhase({
-        data: {
-          pages: batch.map((p) => ({
-            imageBase64: p.base64,
-            pageNumber: p.page,
-          })),
-          topic: plan.topic,
-          subject: plan.subject,
-          lang: planLang(plan),
-        },
-      });
+    setDone(0);
+    setTotal(1);
+    setStatus("جارٍ بناء محتوى العرض...");
 
-      analyzed.push(...(r as AnalyzedPage[]));
+    // طلب Gemini واحد فقط للعرض كله
+    const analyzed = (await analyzePresentationFromText({
+      data: {
+        text: curriculumText,
+        pageCount: pages.length,
+        topic: plan.topic,
+        subject: plan.subject,
+        lang: planLang(plan),
+      },
+    })) as AnalyzedPage[];
 
-      setDone((d) => d + batch.length);
+    if (!analyzed.length) {
+      throw new Error("لم يتمكن الذكاء الاصطناعي من إنشاء محتوى العرض.");
+    }
 
-         }
+    setDone(1);
 
     if (getCurrentFileId() !== fileId) return;
 
     const built = buildPresentation(analyzed, plan);
+
     setSlides(built);
 
     toast.success(`تم بناء العرض — ${built.length} شرائح`);
@@ -118,9 +118,7 @@ const run = async (file: File) => {
     setBusy(false);
     setStatus("");
   }
-};
-
-  const start = () => {
+};  const start = () => {
     if (sharedFile) void run(sharedFile);
     else inputRef.current?.click();
   };

@@ -347,3 +347,131 @@ ${langInstruction(data.lang)}`;
       };
     }
   });
+
+  const PresentationInput = z.object({
+  text: z.string(),
+  pageCount: z.number(),
+  topic: z.string(),
+  subject: z.string(),
+  lang: z.enum(["ar", "en"]).default("ar"),
+});
+
+export const analyzePresentationFromText = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) => PresentationInput.parse(data))
+  .handler(async ({ data }) => {
+    const instruction = `موضوع الدرس: ${data.topic || "غير محدد"}
+المادة: ${data.subject || "غير محدد"}
+عدد صفحات الملف: ${data.pageCount}
+
+نص المقرر:
+${data.text.slice(0, 10000)}
+
+أنشئ تحليلاً مناسباً لبناء عرض تقديمي تعليمي وفق مراحل 5E.
+
+أجب بـ JSON ARRAY فقط، بدون أي نص خارجه.
+
+اختر بين 5 و10 شرائح كحد أقصى، وكل عنصر يجب أن يكون بهذا الشكل:
+
+[
+  {
+    "pageNumber": 1,
+    "pageContent": "وصف مختصر للمحتوى",
+    "bestPhase": "engage",
+    "reasonAr": "سبب اختيار المرحلة",
+    "slideTitle": "عنوان الشريحة",
+    "keyPoints": ["نقطة 1", "نقطة 2", "نقطة 3"],
+    "studentQuestion": "سؤال تفاعلي",
+    "hasActivity": false,
+    "hasDiagram": false
+  }
+]
+
+الشروط:
+- pageNumber يجب أن يكون بين 1 و ${data.pageCount}.
+- لا تستخدم نفس الصفحة أكثر من مرة إلا عند الضرورة.
+- bestPhase يجب أن تكون واحدة فقط من:
+engage, explore, explain, elaborate, evaluate
+- رتّب الشرائح ترتيباً تعليمياً منطقياً.
+- لا تكتب Markdown.
+- لا تكتب أي نص خارج JSON.
+
+${langInstruction(data.lang)}`;
+
+    const raw = (
+      await callAiGateway({
+        messages: [
+          {
+            role: "user",
+            content: instruction,
+          },
+        ],
+        maxTokens: 5000,
+      })
+    ).trim();
+
+    const clean = raw.replace(/```json|```/g, "").trim();
+
+    const start = clean.indexOf("[");
+    const end = clean.lastIndexOf("]");
+
+    try {
+      const parsed = JSON.parse(
+        start >= 0 && end > start
+          ? clean.slice(start, end + 1)
+          : clean,
+      ) as Record<string, unknown>[];
+
+      return parsed.map((item, index) => {
+        const rawPage = Number(item.pageNumber);
+        const pageNumber =
+          Number.isInteger(rawPage) &&
+          rawPage >= 1 &&
+          rawPage <= data.pageCount
+            ? rawPage
+            : Math.min(index + 1, data.pageCount);
+
+        const phase = String(item.bestPhase ?? "explain");
+
+        const validPhase =
+          phase === "engage" ||
+          phase === "explore" ||
+          phase === "explain" ||
+          phase === "elaborate" ||
+          phase === "evaluate"
+            ? phase
+            : "explain";
+
+        return {
+          pageNumber,
+          pageContent: String(item.pageContent ?? ""),
+          bestPhase: validPhase,
+          reasonAr: String(item.reasonAr ?? ""),
+          slideTitle: String(
+            item.slideTitle ?? `صفحة ${pageNumber}`
+          ),
+          keyPoints: Array.isArray(item.keyPoints)
+            ? item.keyPoints
+                .filter(
+                  (p): p is string =>
+                    typeof p === "string"
+                )
+                .slice(0, 5)
+            : [],
+          studentQuestion: String(
+            item.studentQuestion ?? ""
+          ),
+          hasActivity: Boolean(item.hasActivity),
+          hasDiagram: Boolean(item.hasDiagram),
+        };
+      });
+    } catch (e) {
+      if (
+        e instanceof Error &&
+        e.message.includes("AI_ERR::")
+      ) {
+        throw e;
+      }
+
+      return [];
+    }
+  });
