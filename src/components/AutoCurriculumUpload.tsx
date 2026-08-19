@@ -245,45 +245,97 @@ export function CurriculumAutoUpload({
 
         stage = "extractText";
 
-        fullText =
-          await extractText(file);
+try {
+  fullText = await extractText(file);
+} catch (textError) {
+  console.warn(
+    "PDF text extraction failed — falling back to visual reading:",
+    textError,
+  );
+
+  if (!pages.length) {
+    throw textError;
+  }
+
+  stage = "visualFallback";
+
+  setProgress({
+    step: 1,
+    total: 4,
+    message: isArabic
+      ? "جارٍ قراءة صفحات المقرر بصرياً..."
+      : "Reading curriculum pages visually...",
+  });
+
+  const visualParts: string[] = [];
+
+  // نرسل الصور على دفعات حتى لا يكون الطلب كبيراً جداً.
+  const batchSize = 3;
+
+  for (let i = 0; i < pages.length; i += batchSize) {
+    const batch = pages.slice(i, i + batchSize);
+
+    setProgress({
+      step: 1,
+      total: 4,
+      message: isArabic
+        ? `جارٍ قراءة الصفحات ${i + 1}–${Math.min(
+            i + batchSize,
+            pages.length,
+          )} من ${pages.length}...`
+        : `Reading pages ${i + 1}–${Math.min(
+            i + batchSize,
+            pages.length,
+          )} of ${pages.length}...`,
+    });
+
+    const result = await readTextFromImages({
+      data: {
+        images: batch
+          .map((page) => page.base64)
+          .filter(Boolean),
+      },
+    });
+
+    if (result.text?.trim()) {
+      visualParts.push(result.text.trim());
+    }
+  }
+
+  fullText = visualParts.join("\n\n");
+}
 
         /* ============================
            OCR fallback
         ============================ */
 
         if (
-          fullText.trim().length < 100 &&
-          pages.length > 0
-        ) {
-          setProgress({
-            step: 1,
-            total: 4,
-            message: isArabic
-              ? "الملف مصوّر — جارٍ القراءة البصرية..."
-              : "Scanned document — reading visually...",
-          });
+  fullText.trim().length < 100 &&
+  pages.length > 0
+) {
+  stage = "readTextFromImages";
 
-          const firstPage =
-            pages[0];
+  setProgress({
+    step: 1,
+    total: 4,
+    message: isArabic
+      ? "النص قليل — جارٍ التحقق بصرياً..."
+      : "Limited text detected — checking visually...",
+  });
 
-          if (firstPage?.base64) {
-            stage =
-              "readTextFromImages";
+  const result = await readTextFromImages({
+    data: {
+      images: pages
+        .slice(0, Math.min(3, pages.length))
+        .map((page) => page.base64)
+        .filter(Boolean),
+    },
+  });
 
-            const result =
-              await readTextFromImages({
-                data: {
-                  images: [
-                    firstPage.base64,
-                  ],
-                },
-              });
-
-            fullText =
-              result.text ?? "";
-          }
-        }
+  if (result.text?.trim()) {
+    fullText = result.text.trim();
+  }
+}
       } else {
         /* ============================
            DOCX / TXT / MD
