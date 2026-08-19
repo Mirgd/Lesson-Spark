@@ -1,8 +1,13 @@
+import { useUiLanguage } from "@/lib/ui-language";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Loader2, RefreshCw, Users } from "lucide-react";
-import { listStaffDirectory, type StaffMember } from "@/lib/supervision";
+import {
+  listStaffDirectory,
+  setTeacherSupervisorRole,
+  type StaffMember,
+} from "@/lib/supervision";
 import { ROLE_LABEL, type AppRole } from "@/lib/session";
 import { relativeTime } from "@/lib/plans-db";
 import SupervisorOnly from "@/components/SupervisorOnly";
@@ -30,33 +35,129 @@ export const Route = createFileRoute("/admin")({
 });
 
 /** الأدوار بالعربية — حساب واحد قد يحمل أكثر من دور */
-function rolesLabel(roles: AppRole[]): string {
-  if (roles.length === 0) return ROLE_LABEL.teacher;
-  const order: AppRole[] = ["teacher", "supervisor", "school_admin", "admin"];
+function rolesLabel(
+  roles: AppRole[],
+  isArabic: boolean
+): string {
+  const labels: Record<AppRole, { ar: string; en: string }> = {
+    teacher: {
+      ar: "معلم/ة",
+      en: "Teacher",
+    },
+    supervisor: {
+      ar: "مشرف/ة",
+      en: "Supervisor",
+    },
+    school_admin: {
+      ar: "إدارة المدرسة",
+      en: "School Admin",
+    },
+    admin: {
+      ar: "مدير النظام",
+      en: "Admin",
+    },
+  };
+
+  const actualRoles =
+    roles.length > 0
+      ? roles
+      : (["teacher"] as AppRole[]);
+
+  const order: AppRole[] = [
+    "teacher",
+    "supervisor",
+    "school_admin",
+    "admin",
+  ];
+
   return order
-    .filter((r) => roles.includes(r))
-    .map((r) => ROLE_LABEL[r])
+    .filter((role) => actualRoles.includes(role))
+    .map((role) =>
+      isArabic
+        ? labels[role].ar
+        : labels[role].en
+    )
     .join(" · ");
 }
-
 function AdminPage() {
+  const { language } = useUiLanguage();
+  const isArabic = language === "ar";
+
   const [members, setMembers] = useState<StaffMember[]>([]);
-  const [totals, setTotals] = useState({ plans: 0, completed: 0 });
+  const [totals, setTotals] = useState({
+    plans: 0,
+    completed: 0,
+  });
   const [busy, setBusy] = useState(true);
   const [q, setQ] = useState("");
 
+  const [changingRole, setChangingRole] =
+    useState<string | null>(null);
+
   const refresh = useCallback(async () => {
     setBusy(true);
+
     try {
       const dir = await listStaffDirectory();
+
       setMembers(dir.members);
-      setTotals({ plans: dir.totalPlans, completed: dir.completedPlans });
+
+      setTotals({
+        plans: dir.totalPlans,
+        completed: dir.completedPlans,
+      });
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "تعذّر تحميل البيانات");
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : isArabic
+            ? "تعذّر تحميل البيانات"
+            : "Unable to load staff data"
+      );
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [isArabic]);
+
+  const toggleSupervisorRole = async (
+    member: StaffMember
+  ) => {
+    const isSupervisor =
+      member.roles.includes("supervisor");
+
+    setChangingRole(member.id);
+
+    try {
+      await setTeacherSupervisorRole(
+        member.id,
+        isSupervisor
+          ? "teacher"
+          : "supervisor"
+      );
+
+      toast.success(
+        isArabic
+          ? isSupervisor
+            ? "تمت إعادة الحساب إلى معلم/ة"
+            : "تمت ترقية الحساب إلى مشرف/ة"
+          : isSupervisor
+            ? "User changed back to Teacher"
+            : "User promoted to Supervisor"
+      );
+
+      await refresh();
+    } catch (e) {
+      toast.error(
+        e instanceof Error
+          ? e.message
+          : isArabic
+            ? "تعذّر تعديل الصلاحية"
+            : "Unable to update role"
+      );
+    } finally {
+      setChangingRole(null);
+    }
+  };
 
   useEffect(() => {
     void refresh();
@@ -76,7 +177,7 @@ function AdminPage() {
       [
         r.full_name,
         r.email,
-        rolesLabel(r.roles),
+        rolesLabel(r.roles, isArabic),
         r.school ?? "",
         r.branch ?? "",
         r.stage ?? "",
@@ -108,40 +209,52 @@ function AdminPage() {
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-black text-primary">
-            <Users className="h-6 w-6 text-gold" /> بيانات الكادر التعليمي
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            تُقرأ البيانات من الحسابات المسجَّلة وأدوارها وخطط دروسها.
-          </p>
+  <Users className="h-6 w-6 text-gold" />
+  {isArabic ? "بيانات الكادر التعليمي" : "Staff Directory"}
+</h1>
+
+<p className="mt-1 text-sm text-muted-foreground">
+  {isArabic
+    ? "تُقرأ البيانات من الحسابات المسجَّلة وأدوارها وخطط دروسها."
+    : "View registered staff accounts, roles, and lesson plans."}
+</p>
         </div>
         <div className="flex gap-2">
           <button
             onClick={() => void refresh()}
             className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-accent"
           >
-            <RefreshCw className="h-4 w-4" /> تحديث
-          </button>
+<RefreshCw className="h-4 w-4" />
+{isArabic ? "تحديث" : "Refresh"}          </button>
           <button
             onClick={csv}
             className="rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
           >
-            تصدير Excel
+          {isArabic ? "تصدير Excel" : "Export Excel"}
           </button>
           <Link
             to="/supervisor"
             className="rounded-lg border border-gold bg-gold/10 px-3 py-2 text-sm font-bold text-gold hover:bg-gold hover:text-white"
           >
-            تقييم الخطط
-          </Link>
+{isArabic ? "تقييم الخطط" : "Review Plans"}          </Link>
         </div>
       </div>
 
       <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {[
-          { label: "عدد المستخدمين", value: members.length },
-          { label: "عدد الخطط", value: totals.plans },
-          { label: "خطط مكتملة", value: totals.completed },
-        ].map((c) => (
+  {
+    label: isArabic ? "عدد المستخدمين" : "Users",
+    value: members.length,
+  },
+  {
+    label: isArabic ? "عدد الخطط" : "Plans",
+    value: totals.plans,
+  },
+  {
+    label: isArabic ? "خطط مكتملة" : "Completed Plans",
+    value: totals.completed,
+  },
+].map((c) => (
           <div
             key={c.label}
             className="rounded-xl border bg-card p-4 text-center shadow-[var(--shadow-soft)]"
@@ -155,50 +268,104 @@ function AdminPage() {
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="🔍 بحث بالاسم أو البريد أو المدرسة أو المادة..."
-        className="mb-4 w-full rounded-lg border bg-background px-3 py-2 text-sm"
+placeholder={
+  isArabic
+    ? "🔍 بحث بالاسم أو البريد أو المدرسة أو المادة..."
+    : "🔍 Search by name, email, school, or subject..."
+}        className="mb-4 w-full rounded-lg border bg-background px-3 py-2 text-sm"
       />
 
       {rows.length === 0 ? (
         <p className="rounded-xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-          لا توجد حسابات مطابقة.
-        </p>
+{isArabic
+  ? "لا توجد حسابات مطابقة."
+  : "No matching accounts found."}        </p>
       ) : (
         <div className="overflow-x-auto rounded-xl border bg-card shadow-[var(--shadow-soft)]">
           <table className="w-full text-right text-sm">
             <thead className="bg-muted/60 text-xs text-muted-foreground">
-              <tr>
-                <th className="px-3 py-2 font-bold">الاسم</th>
-                <th className="px-3 py-2 font-bold">الدور / الأدوار</th>
-                <th className="px-3 py-2 font-bold">المدرسة</th>
-                <th className="px-3 py-2 font-bold">المرحلة</th>
-                <th className="px-3 py-2 font-bold">المادة</th>
-                <th className="px-3 py-2 font-bold">الخطط</th>
-                <th className="px-3 py-2 font-bold">آخر تحديث</th>
-              </tr>
-            </thead>
+  <tr>
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "الاسم" : "Name"}
+    </th>
+
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "الدور / الأدوار" : "Role / Roles"}
+    </th>
+
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "تعديل الصلاحية" : "Change Role"}
+    </th>
+
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "المدرسة" : "School"}
+    </th>
+
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "المرحلة" : "Stage"}
+    </th>
+
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "المادة" : "Subject"}
+    </th>
+
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "الخطط" : "Plans"}
+    </th>
+
+    <th className="px-3 py-2 font-bold">
+      {isArabic ? "آخر تحديث" : "Last Updated"}
+    </th>
+  </tr>
+</thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t">
                   <td className="px-3 py-2">
-                    <div className="font-bold text-primary">{r.full_name || "بدون اسم"}</div>
-                    <div className="text-xs text-muted-foreground" dir="ltr">
-                      {r.email}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 text-xs">{rolesLabel(r.roles)}</td>
+  <div className="font-bold text-primary">
+    {r.full_name || (isArabic ? "بدون اسم" : "No name")}
+  </div>
+
+  <div className="text-xs text-muted-foreground" dir="ltr">
+    {r.email}
+  </div>
+</td>
+                  <td className="px-3 py-2 text-xs">{rolesLabel(r.roles, isArabic)}</td>
+                  <td className="px-3 py-2">
+  <button
+    type="button"
+    onClick={() => void toggleSupervisorRole(r)}
+    disabled={changingRole === r.id}
+    className="whitespace-nowrap rounded-lg border border-gold/50 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition-colors hover:bg-gold hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {changingRole === r.id
+      ? isArabic
+        ? "جارٍ التعديل..."
+        : "Updating..."
+      : r.roles.includes("supervisor")
+        ? isArabic
+          ? "تحويل إلى معلم/ة"
+          : "Make Teacher"
+        : isArabic
+          ? "تعيين كمشرف/ة"
+          : "Make Supervisor"}
+  </button>
+</td>
                   <td className="px-3 py-2">
                     {[r.school, r.branch].filter(Boolean).join(" · ") || "—"}
                   </td>
                   <td className="px-3 py-2">{r.stage || "—"}</td>
                   <td className="px-3 py-2">{r.subject || "—"}</td>
                   <td className="px-3 py-2 font-bold">
-                    {r.plans}
                     {r.completed > 0 && (
-                      <span className="ms-1 text-xs font-normal text-muted-foreground">
-                        ({r.completed} مكتملة)
-                      </span>
-                    )}
+  <span className="ms-1 text-xs font-normal text-muted-foreground">
+    (
+    {isArabic
+      ? `${r.completed} مكتملة`
+      : `${r.completed} completed`}
+    )
+  </span>
+)}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
                     {r.last_updated ? relativeTime(r.last_updated) : "—"}

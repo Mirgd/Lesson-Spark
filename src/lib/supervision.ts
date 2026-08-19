@@ -188,3 +188,87 @@ export async function listStaffDirectory(): Promise<StaffDirectory> {
     completedPlans: (plans ?? []).filter((p) => p.status === "complete").length,
   };
 }
+export async function setTeacherSupervisorRole(
+  userId: string,
+  nextRole: "teacher" | "supervisor",
+) {
+  const { data: auth, error: authError } =
+    await supabase.auth.getUser();
+
+  if (authError || !auth.user) {
+    throw new Error("يجب تسجيل الدخول أولاً");
+  }
+
+  // نتحقق أن المستخدم الحالي مشرف أو أدمن
+  const { data: myRoles, error: myRolesError } =
+    await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", auth.user.id);
+
+  if (myRolesError) throw myRolesError;
+
+  const roles = (myRoles ?? []).map(
+    (r) => r.role as AppRole,
+  );
+
+  const allowed =
+    roles.includes("supervisor") ||
+    roles.includes("school_admin") ||
+    roles.includes("admin");
+
+  if (!allowed) {
+    throw new Error(
+      "ليس لديك صلاحية لتعديل أدوار المستخدمين",
+    );
+  }
+
+  // لا نسمح للمستخدم بتعديل نفسه من هذه الشاشة
+  if (userId === auth.user.id) {
+    throw new Error(
+      "لا يمكنك تعديل صلاحيتك من هذه الصفحة",
+    );
+  }
+
+  if (nextRole === "supervisor") {
+    // احتفظ بدور teacher وأضف supervisor
+    // لأن النظام الحالي يسمح للحساب بحمل أكثر من دور.
+    const { error } = await supabase
+      .from("user_roles")
+      .upsert(
+        {
+          user_id: userId,
+          role: "supervisor",
+        },
+        {
+          onConflict: "user_id,role",
+        },
+      );
+
+    if (error) throw error;
+  } else {
+    // التحويل إلى Teacher يعني إزالة دور supervisor فقط.
+    const { error } = await supabase
+      .from("user_roles")
+      .delete()
+      .eq("user_id", userId)
+      .eq("role", "supervisor");
+
+    if (error) throw error;
+
+    // تأكد أن teacher موجود
+    const { error: teacherError } = await supabase
+      .from("user_roles")
+      .upsert(
+        {
+          user_id: userId,
+          role: "teacher",
+        },
+        {
+          onConflict: "user_id,role",
+        },
+      );
+
+    if (teacherError) throw teacherError;
+  }
+}

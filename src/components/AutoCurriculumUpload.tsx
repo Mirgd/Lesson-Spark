@@ -43,16 +43,32 @@ const DURATIONS: Record<PhaseId, number> = {
 };
 
 function ProgressBar({ step, total, message, done }: Progress) {
+  const { language } = useUiLanguage();
+  const isArabic = language === "ar";
+
   return (
-    <div className="mb-3 rounded-xl bg-primary p-5" dir="rtl">
+    <div
+      className="mb-3 rounded-xl bg-primary p-5"
+      dir={isArabic ? "rtl" : "ltr"}
+    >
       <div className="mb-2 flex items-center justify-between">
         <span className="text-sm font-medium text-gold">
-          {done ? "✅ اكتملت الخطة" : "🔄 جارٍ المعالجة..."}
+          {done
+            ? isArabic
+              ? "✅ اكتملت الخطة"
+              : "✅ Plan Complete"
+            : isArabic
+              ? "🔄 جارٍ المعالجة..."
+              : "🔄 Processing..."}
         </span>
+
         <span className="text-[13px] text-white/60">
-          {step} من {total}
+          {isArabic
+            ? `${step} من ${total}`
+            : `${step} of ${total}`}
         </span>
       </div>
+
       <div className="mb-2 h-1.5 rounded bg-white/20">
         <div
           className="h-full rounded transition-[width] duration-500"
@@ -62,7 +78,10 @@ function ProgressBar({ step, total, message, done }: Progress) {
           }}
         />
       </div>
-      <p className="m-0 text-[13px] text-white/75">{message}</p>
+
+      <p className="m-0 text-[13px] text-white/75">
+        {message}
+      </p>
     </div>
   );
 }
