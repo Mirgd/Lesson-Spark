@@ -90,17 +90,16 @@ export async function extractText(
   );
 }
 
-async function extractPdf(
-  file: File,
-): Promise<string> {
+async function extractPdf(file: File): Promise<string> {
   await import("./map-polyfill");
 
-  const pdfjs =
-    await import("pdfjs-dist");
+  const pdfjs = await import(
+    "pdfjs-dist/legacy/build/pdf.mjs"
+  );
 
   const workerUrl = (
     await import(
-      "pdfjs-dist/build/pdf.worker.min.mjs?url"
+      "pdfjs-dist/legacy/build/pdf.worker.min.mjs?url"
     )
   ).default;
 
@@ -120,38 +119,39 @@ async function extractPdf(
   const maxPages =
     Math.min(doc.numPages, 50);
 
-  for (
-    let i = 1;
-    i <= maxPages;
-    i++
-  ) {
+  for (let i = 1; i <= maxPages; i++) {
     const page =
       await doc.getPage(i);
 
     const content =
       await page.getTextContent();
 
-    const text = content.items
-      .map((item) => {
+    const pageParts: string[] = [];
+
+    for (const item of content.items) {
+      if (
+        typeof item === "object" &&
+        item !== null &&
+        "str" in item
+      ) {
+        const value = (
+          item as {
+            str?: unknown;
+          }
+        ).str;
+
         if (
-          typeof item === "object" &&
-          item !== null &&
-          "str" in item
+          typeof value === "string" &&
+          value.trim()
         ) {
-          return String(
-            (
-              item as {
-                str?: unknown;
-              }
-            ).str ?? "",
-          );
+          pageParts.push(value);
         }
+      }
+    }
 
-        return "";
-      })
-      .join(" ");
-
-    parts.push(text);
+    parts.push(
+      pageParts.join(" "),
+    );
 
     page.cleanup();
   }
