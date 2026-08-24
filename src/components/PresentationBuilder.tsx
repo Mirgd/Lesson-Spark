@@ -8,6 +8,7 @@ import {
   putPageImage,
   reindex,
   usePresentation,
+  downloadPresentationPptx,
   PHASE_LABELS,
   type AnalyzedPage,
   type Slide,
@@ -33,7 +34,35 @@ const PURPLE = "#5D3FA0";
 
 export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
   const { text: curriculumText } = useCurriculum();
+  const downloadPptx = async () => {
+  if (!slides.length) {
+    toast.error(
+      isArabic
+        ? "أنشئ العرض أولاً"
+        : "Generate the presentation first"
+    );
+    return;
+  }
 
+  try {
+    await downloadPresentationPptx(
+      slides,
+      plan.topic || "lesson-presentation"
+    );
+
+    toast.success(
+      isArabic
+        ? "تم تحميل العرض التقديمي"
+        : "Presentation downloaded successfully"
+    );
+  } catch (e) {
+    toast.error(
+      isArabic
+        ? "تعذّر تحميل العرض التقديمي"
+        : "Unable to download presentation"
+    );
+  }
+};
   const { language } = useUiLanguage();
   const isArabic = language === "ar";
 
@@ -543,31 +572,45 @@ export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
           </ul>
 
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={addBlank}
-              className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-accent"
-            >
-              <Plus className="h-4 w-4" />
+  {/* زر إضافة شريحة فارغة */}
+  <button
+    onClick={addBlank}
+    className="inline-flex items-center gap-1 rounded-lg border px-3 py-2 text-sm hover:bg-accent"
+  >
+    <Plus className="h-4 w-4" />
 
-              {isArabic
-                ? "شريحة فارغة"
-                : "Blank Slide"}
-            </button>
+    {isArabic
+      ? "شريحة فارغة"
+      : "Blank Slide"}
+  </button>
 
-            <a
-              href="/presentation"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-bold text-white hover:opacity-90"
-              style={{ background: PURPLE }}
-            >
-              <Play className="h-4 w-4" />
+  {/* زر تحميل العرض كـ PowerPoint */}
+  <button
+    type="button"
+    onClick={() => void downloadPptx()}
+    disabled={slides.length === 0}
+    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90 disabled:opacity-50"
+  >
+    {isArabic
+      ? "تحميل PowerPoint"
+      : "Download PowerPoint"}
+  </button>
 
-              {isArabic
-                ? "ابدأ العرض"
-                : "Start Presentation"}
-            </a>
-          </div>
+  {/* زر بدء العرض */}
+  <a
+    href="/presentation"
+    target="_blank"
+    rel="noreferrer"
+    className="inline-flex items-center gap-1 rounded-lg px-4 py-2 text-sm font-bold text-white hover:opacity-90"
+    style={{ background: PURPLE }}
+  >
+    <Play className="h-4 w-4" />
+
+    {isArabic
+      ? "ابدأ العرض"
+      : "Start Presentation"}
+  </a>
+</div>
         </div>
       )}
     </div>

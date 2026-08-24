@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { ChevronRight, ChevronLeft, Maximize2 } from "lucide-react";
-import { EXEC_PHASE_KEY, usePresentation } from "@/lib/presentation";
+import { EXEC_PHASE_KEY, downloadPresentationPptx, usePresentation } from "@/lib/presentation";
 import { SlideView } from "@/components/SlideView";
 import { useCurrentPlan } from "@/lib/lesson-types";
 import { useExecTimer } from "@/lib/exec-timer";
@@ -34,6 +34,7 @@ function PresentationPage() {
   const timer = useExecTimer();
   const [showTimer, setShowTimer] = useState(true);
 
+  
   // Sync with execution phase across windows.
   useEffect(() => {
     const sync = () => {

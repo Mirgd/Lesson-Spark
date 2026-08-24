@@ -1,3 +1,4 @@
+import pptxgen from "pptxgenjs";
 import { useCallback, useEffect, useState } from "react";
 import type { PhaseId } from "./lesson-types";
 import { getCurrentFileId } from "./pdf-images";
@@ -251,4 +252,316 @@ export async function listPageNumbers(fileId?: string): Promise<number[]> {
     .filter((n) => Number.isFinite(n))
     .sort((a, b) => a - b);
 
+}
+export async function downloadPresentationPptx(
+  slides: Slide[],
+  fileName = "lesson-presentation",
+) {
+  const pptx = new pptxgen();
+
+  pptx.layout = "LAYOUT_WIDE";
+  pptx.author = "Lesson Spark";
+  pptx.subject = "Lesson Presentation";
+  pptx.title = fileName;
+  pptx.company = "Al-Ramz School";
+ 
+
+  pptx.theme = {
+    headFontFace: "Arial",
+    bodyFontFace: "Arial",
+  };
+
+  for (const item of slides) {
+    const slide = pptx.addSlide();
+
+    // خلفية بسيطة
+    slide.background = {
+      color: "FFFFFF",
+    };
+
+    // شريط علوي
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 0.18,
+      fill: {
+        color: "B8860B",
+      },
+      line: {
+        color: "B8860B",
+      },
+    });
+
+    /* =========================
+       Cover Slide
+    ========================= */
+
+    if (item.type === "cover") {
+      slide.addText(
+        item.title || "درس اليوم",
+        {
+          x: 1,
+          y: 1.3,
+          w: 11.3,
+          h: 0.9,
+          fontSize: 30,
+          bold: true,
+          align: "center",
+          color: "1B2A4A",
+          rtlMode: true,
+          margin: 0.08,
+        },
+      );
+
+      if (item.subject) {
+        slide.addText(
+          item.subject,
+          {
+            x: 1,
+            y: 2.45,
+            w: 11.3,
+            h: 0.5,
+            fontSize: 18,
+            align: "center",
+            color: "666666",
+            rtlMode: true,
+          },
+        );
+      }
+
+      if (item.grade) {
+        slide.addText(
+          item.grade,
+          {
+            x: 1,
+            y: 3,
+            w: 11.3,
+            h: 0.5,
+            fontSize: 16,
+            align: "center",
+            color: "888888",
+            rtlMode: true,
+          },
+        );
+      }
+
+      if (
+        item.outcomes &&
+        item.outcomes.length > 0
+      ) {
+        slide.addText(
+          "نواتج التعلم",
+          {
+            x: 1.2,
+            y: 4,
+            w: 10.9,
+            h: 0.45,
+            fontSize: 18,
+            bold: true,
+            align: "right",
+            color: "B8860B",
+            rtlMode: true,
+          },
+        );
+
+        const outcomesText =
+          item.outcomes
+            .map(
+              (outcome) =>
+                `• ${outcome}`,
+            )
+            .join("\n");
+
+        slide.addText(
+          outcomesText,
+          {
+            x: 1.2,
+            y: 4.55,
+            w: 10.9,
+            h: 2,
+            fontSize: 14,
+            align: "right",
+            valign: "top",
+            color: "1B2A4A",
+            rtlMode: true,
+            breakLine: false,
+            margin: 0.1,
+          },
+        );
+      }
+
+      continue;
+    }
+
+    /* =========================
+       Content Slide
+    ========================= */
+
+    if (item.type === "content") {
+      slide.addText(
+        item.title || "عنوان الشريحة",
+        {
+          x: 0.8,
+          y: 0.55,
+          w: 11.7,
+          h: 0.65,
+          fontSize: 24,
+          bold: true,
+          align: "right",
+          color: "1B2A4A",
+          rtlMode: true,
+        },
+      );
+
+      if (
+        item.points &&
+        item.points.length > 0
+      ) {
+        const pointsText =
+          item.points
+            .map(
+              (point) =>
+                `• ${point}`,
+            )
+            .join("\n");
+
+        slide.addText(
+          pointsText,
+          {
+            x: 0.9,
+            y: 1.45,
+            w: 11.5,
+            h: 3.8,
+            fontSize: 18,
+            align: "right",
+            valign: "top",
+            color: "2D3748",
+            rtlMode: true,
+            margin: 0.12,
+          },
+        );
+      }
+
+      if (item.question) {
+        slide.addShape(
+          pptx.ShapeType.roundRect,
+          {
+            x: 1,
+            y: 5.55,
+            w: 11.2,
+            h: 1.15,
+            rectRadius: 0.08,
+            fill: {
+              color: "FBF4E3",
+            },
+            line: {
+              color: "B8860B",
+              width: 1,
+            },
+          },
+        );
+
+        slide.addText(
+          `سؤال للطالب: ${item.question}`,
+          {
+            x: 1.25,
+            y: 5.85,
+            w: 10.7,
+            h: 0.5,
+            fontSize: 16,
+            bold: true,
+            align: "right",
+            color: "1B2A4A",
+            rtlMode: true,
+          },
+        );
+      }
+
+      // اسم المرحلة
+      slide.addText(
+        String(item.phase ?? ""),
+        {
+          x: 0.6,
+          y: 6.9,
+          w: 2.5,
+          h: 0.3,
+          fontSize: 10,
+          color: "999999",
+          align: "left",
+        },
+      );
+
+      continue;
+    }
+
+    /* =========================
+       Homework Slide
+    ========================= */
+
+    if (item.type === "homework") {
+      slide.addText(
+        item.title ||
+          "تحدّيك المنزلي",
+        {
+          x: 1,
+          y: 1.1,
+          w: 11.3,
+          h: 0.8,
+          fontSize: 28,
+          bold: true,
+          align: "center",
+          color: "1B2A4A",
+          rtlMode: true,
+        },
+      );
+
+      slide.addShape(
+        pptx.ShapeType.roundRect,
+        {
+          x: 1.2,
+          y: 2.3,
+          w: 10.9,
+          h: 3,
+          fill: {
+            color: "FBF4E3",
+          },
+          line: {
+            color: "B8860B",
+            width: 1.3,
+          },
+        },
+      );
+
+      slide.addText(
+        item.homework ||
+          "لا يوجد واجب محدد.",
+        {
+          x: 1.6,
+          y: 2.8,
+          w: 10.1,
+          h: 2,
+          fontSize: 20,
+          align: "right",
+          valign: "middle",
+          color: "1B2A4A",
+          rtlMode: true,
+          margin: 0.12,
+        },
+      );
+    }
+  }
+
+  const safeFileName =
+    fileName
+      .replace(
+        /[\\/:*?"<>|]/g,
+        "-",
+      )
+      .trim() ||
+    "lesson-presentation";
+
+  await pptx.writeFile({
+    fileName: `${safeFileName}.pptx`,
+  });
 }
