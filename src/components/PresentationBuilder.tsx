@@ -815,193 +815,430 @@ export function PresentationBuilder({
             محرر الشريحة
         ========================= */}
 
-        {isEditingOpen && (
-          <div
-            className="mt-3 space-y-4 rounded-xl border border-primary/30 bg-muted/20 p-4"
-            dir={
+{isEditingOpen && (
+  <div
+    className="mt-3 space-y-4 rounded-xl border border-primary/30 bg-muted/20 p-4"
+    dir={isArabic ? "rtl" : "ltr"}
+  >
+    {/* =========================
+        رأس محرر الشريحة
+    ========================= */}
+
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-2 text-sm font-black text-primary">
+        <Pencil className="h-4 w-4" />
+
+        {isArabic
+          ? "تعديل الشريحة"
+          : "Edit Slide"}
+      </div>
+
+      <span className="text-[11px] text-muted-foreground">
+        {isArabic
+          ? `الشريحة ${index + 1}`
+          : `Slide ${index + 1}`}
+      </span>
+    </div>
+
+    {/* =========================
+        عنوان الشريحة
+    ========================= */}
+
+    <div>
+      <label className="mb-1 block text-xs font-bold text-muted-foreground">
+        {isArabic
+          ? "عنوان الشريحة"
+          : "Slide Title"}
+      </label>
+
+      <input
+        type="text"
+        value={slide.title ?? ""}
+        onChange={(event) => {
+          patch(index, {
+            title: event.target.value,
+          });
+        }}
+        className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+        placeholder={
+          isArabic
+            ? "اكتب عنوان الشريحة"
+            : "Enter slide title"
+        }
+      />
+    </div>
+
+    {/* =========================
+        شريحة الغلاف
+    ========================= */}
+
+    {slide.type === "cover" && (
+      <div className="rounded-lg border border-dashed bg-background/60 p-3 text-xs text-muted-foreground">
+        {isArabic
+          ? "هذه شريحة الغلاف. يمكنك تعديل عنوانها وإضافة صورة لها."
+          : "This is the cover slide. You can edit its title and add an image."}
+      </div>
+    )}
+
+    {/* =========================
+        نقاط الشريحة + السؤال
+    ========================= */}
+
+    {slide.type !== "cover" && (
+      <>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-muted-foreground">
+            {isArabic
+              ? "نقاط الشريحة"
+              : "Slide Points"}
+          </label>
+
+          <textarea
+            value={(slide.points ?? []).join("\n")}
+            onChange={(event) => {
+              patch(index, {
+                points:
+                  event.target.value.split("\n"),
+              });
+            }}
+            rows={5}
+            placeholder={
               isArabic
-                ? "rtl"
-                : "ltr"
+                ? "اكتب كل نقطة في سطر منفصل"
+                : "Write one point per line"
             }
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 text-sm font-black text-primary">
-                <Pencil className="h-4 w-4" />
+            className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          />
+        </div>
 
-                {isArabic
-                  ? "تعديل الشريحة"
-                  : "Edit Slide"}
-              </div>
+        <div>
+          <label className="mb-1 block text-xs font-bold text-muted-foreground">
+            {isArabic
+              ? "السؤال التفاعلي"
+              : "Interactive Question"}
+          </label>
 
-              <span className="text-[11px] text-muted-foreground">
-                {isArabic
-                  ? `الشريحة ${index + 1}`
-                  : `Slide ${index + 1}`}
-              </span>
-            </div>
+          <textarea
+            value={slide.question ?? ""}
+            onChange={(event) => {
+              patch(index, {
+                question:
+                  event.target.value,
+              });
+            }}
+            rows={2}
+            placeholder={
+              isArabic
+                ? "اكتب سؤالاً تفاعلياً للطالب"
+                : "Enter an interactive question"
+            }
+            className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          />
+        </div>
+      </>
+    )}
 
-            {/* عنوان الشريحة */}
-            <div>
-              <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                {isArabic
-                  ? "عنوان الشريحة"
-                  : "Slide Title"}
-              </label>
+    {/* =========================
+        الواجب
+    ========================= */}
+
+    {slide.type === "homework" && (
+      <div>
+        <label className="mb-1 block text-xs font-bold text-muted-foreground">
+          {isArabic
+            ? "محتوى الواجب المنزلي"
+            : "Homework Content"}
+        </label>
+
+        <textarea
+          value={slide.homework ?? ""}
+          onChange={(event) => {
+            patch(index, {
+              homework:
+                event.target.value,
+            });
+          }}
+          rows={4}
+          placeholder={
+            isArabic
+              ? "اكتب الواجب المنزلي"
+              : "Enter homework content"
+          }
+          className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+        />
+      </div>
+    )}
+
+    {/* =========================
+        إضافة صورة للشريحة
+    ========================= */}
+
+    <div className="rounded-xl border bg-background/70 p-3">
+      <label className="mb-2 block text-xs font-bold text-muted-foreground">
+        {isArabic
+          ? "صورة الشريحة"
+          : "Slide Image"}
+      </label>
+
+      <p className="mb-3 text-[11px] text-muted-foreground">
+        {isArabic
+          ? "يمكنك إضافة صورة من جهازك لتظهر داخل هذه الشريحة."
+          : "You can add an image from your device to this slide."}
+      </p>
+
+      <input
+        type="file"
+        accept="image/png,image/jpeg,image/jpg,image/webp"
+        onChange={(event) => {
+          const file =
+            event.target.files?.[0];
+
+          /*
+           * نسمح باختيار نفس الصورة مرة أخرى
+           * بعد حذفها.
+           */
+          event.target.value = "";
+
+          if (!file) {
+            return;
+          }
+
+          /*
+           * حماية بسيطة من الملفات الكبيرة جداً.
+           * 8 MB كحد أقصى للصورة الواحدة.
+           */
+          const maxSize =
+            8 * 1024 * 1024;
+
+          if (file.size > maxSize) {
+            toast.error(
+              isArabic
+                ? "حجم الصورة كبير جداً. اختر صورة أقل من 8 MB."
+                : "The image is too large. Choose an image smaller than 8 MB.",
+            );
+
+            return;
+          }
+
+          /*
+           * نتأكد أنها صورة.
+           */
+          if (
+            !file.type.startsWith(
+              "image/",
+            )
+          ) {
+            toast.error(
+              isArabic
+                ? "الملف المختار ليس صورة."
+                : "The selected file is not an image.",
+            );
+
+            return;
+          }
+
+          /*
+           * تحويل الصورة إلى Data URL.
+           *
+           * مثال:
+           * data:image/jpeg;base64,...
+           *
+           * بعدها نخزنها داخل نفس Slide.
+           */
+          const reader =
+            new FileReader();
+
+          reader.onload = () => {
+            if (
+              typeof reader.result !==
+              "string"
+            ) {
+              return;
+            }
+
+            patch(index, {
+              imageDataUrl:
+                reader.result,
+            });
+
+            toast.success(
+              isArabic
+                ? "تمت إضافة الصورة إلى الشريحة"
+                : "Image added to slide",
+            );
+          };
+
+          reader.onerror = () => {
+            toast.error(
+              isArabic
+                ? "تعذّر قراءة الصورة"
+                : "Unable to read image",
+            );
+          };
+
+          reader.readAsDataURL(file);
+        }}
+        className="block w-full cursor-pointer rounded-lg border bg-background px-3 py-2 text-xs"
+      />
+
+      {/* =========================
+          معاينة الصورة المضافة
+      ========================= */}
+
+      {slide.imageDataUrl && (
+        <div className="mt-4 rounded-xl border bg-card p-3">
+          <div className="mb-2 text-xs font-bold text-primary">
+            {isArabic
+              ? "معاينة الصورة"
+              : "Image Preview"}
+          </div>
+
+          <div className="flex justify-center rounded-lg bg-muted/30 p-2">
+            <img
+              src={slide.imageDataUrl}
+              alt={
+                slide.title ||
+                (isArabic
+                  ? "صورة الشريحة"
+                  : "Slide image")
+              }
+              className="max-h-64 max-w-full rounded-lg object-contain"
+            />
+          </div>
+
+          <div className="mt-3 flex flex-wrap justify-end gap-2">
+            {/* تغيير الصورة */}
+
+            <label className="cursor-pointer rounded-lg border px-3 py-1.5 text-xs font-bold hover:bg-accent">
+              {isArabic
+                ? "تغيير الصورة"
+                : "Change Image"}
 
               <input
-                type="text"
-                value={slide.title ?? ""}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/webp"
+                className="hidden"
                 onChange={(event) => {
-                  patch(index, {
-                    title:
-                      event.target.value,
-                  });
-                }}
-                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                placeholder={
-                  isArabic
-                    ? "اكتب عنوان الشريحة"
-                    : "Enter slide title"
-                }
-              />
-            </div>
+                  const file =
+                    event.target.files?.[0];
 
-            {/* الغلاف */}
-            {slide.type === "cover" && (
-              <div className="rounded-lg border border-dashed bg-background/60 p-3 text-xs text-muted-foreground">
-                {isArabic
-                  ? "هذه شريحة الغلاف. يمكنك تعديل عنوانها من الحقل أعلاه."
-                  : "This is the cover slide. You can edit its title above."}
-              </div>
-            )}
+                  event.target.value = "";
 
-            {/* محتوى الشرائح */}
-            {slide.type !== "cover" && (
-              <>
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                    {isArabic
-                      ? "نقاط الشريحة"
-                      : "Slide Points"}
-                  </label>
-
-                  <textarea
-                    value={(
-                      slide.points ?? []
-                    ).join("\n")}
-                    onChange={(event) => {
-                      patch(index, {
-                        points:
-                          event.target.value.split(
-                            "\n",
-                          ),
-                      });
-                    }}
-                    rows={5}
-                    placeholder={
-                      isArabic
-                        ? "اكتب كل نقطة في سطر منفصل"
-                        : "Write one point per line"
-                    }
-                    className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                    {isArabic
-                      ? "السؤال التفاعلي"
-                      : "Interactive Question"}
-                  </label>
-
-                  <textarea
-                    value={
-                      slide.question ?? ""
-                    }
-                    onChange={(event) => {
-                      patch(index, {
-                        question:
-                          event.target.value,
-                      });
-                    }}
-                    rows={2}
-                    placeholder={
-                      isArabic
-                        ? "اكتب سؤالاً تفاعلياً للطالب"
-                        : "Enter an interactive question"
-                    }
-                    className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                  />
-                </div>
-              </>
-            )}
-
-            {/* الواجب */}
-            {slide.type === "homework" && (
-              <div>
-                <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                  {isArabic
-                    ? "محتوى الواجب المنزلي"
-                    : "Homework Content"}
-                </label>
-
-                <textarea
-                  value={
-                    slide.homework ?? ""
+                  if (!file) {
+                    return;
                   }
-                  onChange={(event) => {
-                    patch(index, {
-                      homework:
-                        event.target.value,
-                    });
-                  }}
-                  rows={4}
-                  placeholder={
-                    isArabic
-                      ? "اكتب الواجب المنزلي"
-                      : "Enter homework content"
+
+                  const maxSize =
+                    8 * 1024 * 1024;
+
+                  if (
+                    file.size >
+                    maxSize
+                  ) {
+                    toast.error(
+                      isArabic
+                        ? "حجم الصورة كبير جداً. اختر صورة أقل من 8 MB."
+                        : "The image is too large. Choose an image smaller than 8 MB.",
+                    );
+
+                    return;
                   }
-                  className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-                />
-              </div>
-            )}
 
-            {/* أزرار المحرر */}
-            <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setEditing(null);
+                  const reader =
+                    new FileReader();
 
-                  setPreview(index);
-                }}
-                className="rounded-lg border px-4 py-2 text-xs font-bold hover:bg-accent"
-              >
-                {isArabic
-                  ? "معاينة التعديل"
-                  : "Preview Changes"}
-              </button>
+                  reader.onload = () => {
+                    if (
+                      typeof reader.result ===
+                      "string"
+                    ) {
+                      patch(index, {
+                        imageDataUrl:
+                          reader.result,
+                      });
+                    }
+                  };
 
-              <button
-                type="button"
-                onClick={() => {
-                  setEditing(null);
+                  reader.onerror = () => {
+                    toast.error(
+                      isArabic
+                        ? "تعذّر قراءة الصورة"
+                        : "Unable to read image",
+                    );
+                  };
 
-                  toast.success(
-                    isArabic
-                      ? "تم حفظ تعديلات الشريحة"
-                      : "Slide changes saved",
+                  reader.readAsDataURL(
+                    file,
                   );
                 }}
-                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
-              >
-                {isArabic
-                  ? "تم ✓"
-                  : "Done ✓"}
-              </button>
-            </div>
+              />
+            </label>
+
+            {/* حذف الصورة */}
+
+            <button
+              type="button"
+              onClick={() => {
+                patch(index, {
+                  imageDataUrl:
+                    undefined,
+                });
+
+                toast.success(
+                  isArabic
+                    ? "تم حذف الصورة من الشريحة"
+                    : "Image removed from slide",
+                );
+              }}
+              className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/10"
+            >
+              {isArabic
+                ? "حذف الصورة"
+                : "Remove Image"}
+            </button>
           </div>
-        )}
+        </div>
+      )}
+    </div>
+
+    {/* =========================
+        أزرار المحرر
+    ========================= */}
+
+    <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+      <button
+        type="button"
+        onClick={() => {
+          setEditing(null);
+          setPreview(index);
+        }}
+        className="rounded-lg border px-4 py-2 text-xs font-bold hover:bg-accent"
+      >
+        {isArabic
+          ? "معاينة التعديل"
+          : "Preview Changes"}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setEditing(null);
+
+          toast.success(
+            isArabic
+              ? "تم حفظ تعديلات الشريحة"
+              : "Slide changes saved",
+          );
+        }}
+        className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
+      >
+        {isArabic
+          ? "تم ✓"
+          : "Done ✓"}
+      </button>
+    </div>
+  </div>
+)}
       </li>
     );
   })}

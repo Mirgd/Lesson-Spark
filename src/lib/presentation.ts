@@ -7,6 +7,7 @@ import { getCurrentFileId } from "./pdf-images";
 export type SlidePhase = PhaseId | "cover" | "extend";
 
 export interface Slide {
+  imageDataUrl?: string;
   imageUrl?: string;
   id: number;
   type: "cover" | "content" | "homework" | "blank";
@@ -261,11 +262,11 @@ export async function downloadPresentationPptx(
   const pptx = new pptxgen();
 
   pptx.layout = "LAYOUT_WIDE";
+
   pptx.author = "Lesson Spark";
   pptx.subject = "Lesson Presentation";
   pptx.title = fileName;
   pptx.company = "Al-Ramz School";
- 
 
   pptx.theme = {
     headFontFace: "Arial",
@@ -275,37 +276,75 @@ export async function downloadPresentationPptx(
   for (const item of slides) {
     const slide = pptx.addSlide();
 
-    // خلفية بسيطة
+    /* =====================================================
+       تحديد الصورة التي ستستخدمها الشريحة
+    ===================================================== */
+
+    let imageData: string | null =
+      item.imageDataUrl ||
+      item.imageUrl ||
+      null;
+
+    /*
+     * إذا لم تضف المعلمة صورة يدوياً،
+     * نحاول أخذ صورة صفحة الكتاب.
+     */
+    if (
+      !imageData &&
+      item.pageNumber != null
+    ) {
+      try {
+        imageData =
+          await getPageImage(
+            item.pageNumber,
+          );
+      } catch (error) {
+        console.warn(
+          `Unable to load page image for page ${item.pageNumber}`,
+          error,
+        );
+      }
+    }
+
+    const hasImage =
+      Boolean(imageData);
+
+    /* =====================================================
+       الخلفية
+    ===================================================== */
+
     slide.background = {
       color: "FFFFFF",
     };
 
-    // شريط علوي
-    slide.addShape(pptx.ShapeType.rect, {
-      x: 0,
-      y: 0,
-      w: 13.333,
-      h: 0.18,
-      fill: {
-        color: "B8860B",
+    slide.addShape(
+      pptx.ShapeType.rect,
+      {
+        x: 0,
+        y: 0,
+        w: 13.333,
+        h: 0.18,
+        fill: {
+          color: "B8860B",
+        },
+        line: {
+          color: "B8860B",
+        },
       },
-      line: {
-        color: "B8860B",
-      },
-    });
+    );
 
-    /* =========================
+    /* =====================================================
        Cover Slide
-    ========================= */
+    ===================================================== */
 
     if (item.type === "cover") {
       slide.addText(
         item.title || "درس اليوم",
         {
           x: 1,
-          y: 1.3,
+          y: 0.8,
           w: 11.3,
-          h: 0.9,
+          h: 0.8,
           fontSize: 30,
           bold: true,
           align: "center",
@@ -320,9 +359,9 @@ export async function downloadPresentationPptx(
           item.subject,
           {
             x: 1,
-            y: 2.45,
+            y: 1.7,
             w: 11.3,
-            h: 0.5,
+            h: 0.45,
             fontSize: 18,
             align: "center",
             color: "666666",
@@ -336,9 +375,9 @@ export async function downloadPresentationPptx(
           item.grade,
           {
             x: 1,
-            y: 3,
+            y: 2.15,
             w: 11.3,
-            h: 0.5,
+            h: 0.4,
             fontSize: 16,
             align: "center",
             color: "888888",
@@ -347,17 +386,33 @@ export async function downloadPresentationPptx(
         );
       }
 
+      /*
+       * صورة الغلاف إذا أضافتها المعلمة.
+       */
+      if (imageData) {
+        slide.addImage({
+          data: imageData,
+          x: 4.45,
+          y: 2.7,
+          w: 4.4,
+          h: 2.2,
+        });
+      }
+
       if (
         item.outcomes &&
         item.outcomes.length > 0
       ) {
+        const outcomesY =
+          hasImage ? 5.15 : 3.25;
+
         slide.addText(
           "نواتج التعلم",
           {
             x: 1.2,
-            y: 4,
+            y: outcomesY,
             w: 10.9,
-            h: 0.45,
+            h: 0.4,
             fontSize: 18,
             bold: true,
             align: "right",
@@ -378,9 +433,14 @@ export async function downloadPresentationPptx(
           outcomesText,
           {
             x: 1.2,
-            y: 4.55,
+            y:
+              outcomesY +
+              0.45,
             w: 10.9,
-            h: 2,
+            h:
+              hasImage
+                ? 1.3
+                : 2.3,
             fontSize: 14,
             align: "right",
             valign: "top",
@@ -395,13 +455,17 @@ export async function downloadPresentationPptx(
       continue;
     }
 
-    /* =========================
-       Content Slide
-    ========================= */
+    /* =====================================================
+       Content / Blank Slide
+    ===================================================== */
 
-    if (item.type === "content") {
+    if (
+      item.type === "content" ||
+      item.type === "blank"
+    ) {
       slide.addText(
-        item.title || "عنوان الشريحة",
+        item.title ||
+          "عنوان الشريحة",
         {
           x: 0.8,
           y: 0.55,
@@ -414,6 +478,16 @@ export async function downloadPresentationPptx(
           rtlMode: true,
         },
       );
+
+      /*
+       * إذا هناك صورة:
+       * النص يأخذ تقريباً نصف الشريحة.
+       *
+       * إذا لا توجد:
+       * النص يستخدم العرض بالكامل.
+       */
+      const textWidth =
+        hasImage ? 6.1 : 11.5;
 
       if (
         item.points &&
@@ -432,7 +506,7 @@ export async function downloadPresentationPptx(
           {
             x: 0.9,
             y: 1.45,
-            w: 11.5,
+            w: textWidth,
             h: 3.8,
             fontSize: 18,
             align: "right",
@@ -442,6 +516,21 @@ export async function downloadPresentationPptx(
             margin: 0.12,
           },
         );
+      }
+
+      /*
+       * الصورة:
+       * - الصورة اليدوية أولاً
+       * - وإلا صورة صفحة الكتاب.
+       */
+      if (imageData) {
+        slide.addImage({
+          data: imageData,
+          x: 7.35,
+          y: 1.4,
+          w: 5.05,
+          h: 3.75,
+        });
       }
 
       if (item.question) {
@@ -454,10 +543,12 @@ export async function downloadPresentationPptx(
             h: 1.15,
             rectRadius: 0.08,
             fill: {
-              color: "FBF4E3",
+              color:
+                "FBF4E3",
             },
             line: {
-              color: "B8860B",
+              color:
+                "B8860B",
               width: 1,
             },
           },
@@ -479,9 +570,13 @@ export async function downloadPresentationPptx(
         );
       }
 
-      // اسم المرحلة
+      /*
+       * اسم المرحلة.
+       */
       slide.addText(
-        String(item.phase ?? ""),
+        String(
+          item.phase ?? "",
+        ),
         {
           x: 0.6,
           y: 6.9,
@@ -496,17 +591,19 @@ export async function downloadPresentationPptx(
       continue;
     }
 
-    /* =========================
+    /* =====================================================
        Homework Slide
-    ========================= */
+    ===================================================== */
 
-    if (item.type === "homework") {
+    if (
+      item.type === "homework"
+    ) {
       slide.addText(
         item.title ||
           "تحدّيك المنزلي",
         {
           x: 1,
-          y: 1.1,
+          y: 0.8,
           w: 11.3,
           h: 0.8,
           fontSize: 28,
@@ -517,18 +614,39 @@ export async function downloadPresentationPptx(
         },
       );
 
+      /*
+       * صورة مضافة إلى الواجب.
+       */
+      if (imageData) {
+        slide.addImage({
+          data: imageData,
+          x: 4.35,
+          y: 1.7,
+          w: 4.6,
+          h: 2.4,
+        });
+      }
+
       slide.addShape(
         pptx.ShapeType.roundRect,
         {
           x: 1.2,
-          y: 2.3,
+          y:
+            hasImage
+              ? 4.35
+              : 2.3,
           w: 10.9,
-          h: 3,
+          h:
+            hasImage
+              ? 2
+              : 3,
           fill: {
-            color: "FBF4E3",
+            color:
+              "FBF4E3",
           },
           line: {
-            color: "B8860B",
+            color:
+              "B8860B",
             width: 1.3,
           },
         },
@@ -539,9 +657,15 @@ export async function downloadPresentationPptx(
           "لا يوجد واجب محدد.",
         {
           x: 1.6,
-          y: 2.8,
+          y:
+            hasImage
+              ? 4.75
+              : 2.8,
           w: 10.1,
-          h: 2,
+          h:
+            hasImage
+              ? 1.2
+              : 2,
           fontSize: 20,
           align: "right",
           valign: "middle",
@@ -553,6 +677,10 @@ export async function downloadPresentationPptx(
     }
   }
 
+  /* =====================================================
+     File Name
+  ===================================================== */
+
   const safeFileName =
     fileName
       .replace(
@@ -563,6 +691,7 @@ export async function downloadPresentationPptx(
     "lesson-presentation";
 
   await pptx.writeFile({
-    fileName: `${safeFileName}.pptx`,
+    fileName:
+      `${safeFileName}.pptx`,
   });
 }

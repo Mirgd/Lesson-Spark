@@ -358,90 +358,98 @@ function Execute() {
         </div>
 
         {/* Combined slide + timer */}
-        {combined &&
-          slides.length > 0 && (
-            <div className="relative mb-5 overflow-hidden rounded-2xl border border-white/12 bg-black">
-              <div className="aspect-video">
-                <SlideView
-                  slide={
-                    slides[
-                      Math.min(
-                        slideIdx,
-                        slides.length - 1
-                      )
-                    ]
-                  }
-                  index={Math.min(
-                    slideIdx,
-                    slides.length - 1
-                  )}
-                  count={slides.length}
-                  topic={plan.topic}
-                />
-              </div>
+{combined && slides.length > 0 && (
+  <div className="mb-5 overflow-hidden rounded-2xl border border-white/12 bg-black">
 
-              {liveTimer && (
-                <div className="absolute left-3 top-3 z-10">
-                  <TimerBadge
-                    state={liveTimer}
-                    size={110}
-                  />
-                </div>
-              )}
+    {/* =========================
+        Top controls / timer bar
+    ========================= */}
+    {liveTimer && (
+      <div className="flex items-center justify-between gap-3 border-b border-white/10 bg-[#1B2A4A] px-4 py-3">
+        <div className="text-xs font-bold text-white/60">
+          {isArabic
+            ? "مؤقت المرحلة"
+            : "Phase Timer"}
+        </div>
 
-              <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3">
-                <button
-                  onClick={() =>
-                    setSlideIdx((i) =>
-                      Math.max(
-                        i - 1,
-                        0
-                      )
-                    )
-                  }
-                  className="rounded-full bg-black/50 px-3 py-1 text-white backdrop-blur hover:bg-black/70"
-                  aria-label={
-                    isArabic
-                      ? "الشريحة السابقة"
-                      : "Previous Slide"
-                  }
-                >
-                  {isArabic
-                    ? "→"
-                    : "←"}
-                </button>
+        <TimerBadge
+          state={liveTimer}
+          size={82}
+        />
+      </div>
+    )}
 
-                <span className="rounded-full bg-black/50 px-3 py-1 text-xs text-white/80 backdrop-blur">
-                  {Math.min(
-                    slideIdx,
-                    slides.length - 1
-                  ) + 1}
-                  /{slides.length}
-                </span>
+    {/* =========================
+        Slide
+    ========================= */}
+    <div className="aspect-video">
+      <SlideView
+        slide={
+          slides[
+            Math.min(
+              slideIdx,
+              slides.length - 1,
+            )
+          ]
+        }
+        index={Math.min(
+          slideIdx,
+          slides.length - 1,
+        )}
+        count={slides.length}
+        topic={plan.topic}
+      />
+    </div>
 
-                <button
-                  onClick={() =>
-                    setSlideIdx((i) =>
-                      Math.min(
-                        i + 1,
-                        slides.length - 1
-                      )
-                    )
-                  }
-                  className="rounded-full bg-black/50 px-3 py-1 text-white backdrop-blur hover:bg-black/70"
-                  aria-label={
-                    isArabic
-                      ? "الشريحة التالية"
-                      : "Next Slide"
-                  }
-                >
-                  {isArabic
-                    ? "←"
-                    : "→"}
-                </button>
-              </div>
-            </div>
-          )}
+    {/* =========================
+        Slide navigation
+    ========================= */}
+    <div className="flex items-center justify-center gap-3 border-t border-white/10 bg-black/90 px-4 py-3">
+      <button
+        onClick={() =>
+          setSlideIdx((i) =>
+            Math.max(i - 1, 0),
+          )
+        }
+        className="rounded-full bg-white/10 px-3 py-1 text-white hover:bg-white/20"
+        aria-label={
+          isArabic
+            ? "الشريحة السابقة"
+            : "Previous Slide"
+        }
+      >
+        {isArabic ? "→" : "←"}
+      </button>
+
+      <span className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/80">
+        {Math.min(
+          slideIdx,
+          slides.length - 1,
+        ) + 1}
+        /{slides.length}
+      </span>
+
+      <button
+        onClick={() =>
+          setSlideIdx((i) =>
+            Math.min(
+              i + 1,
+              slides.length - 1,
+            ),
+          )
+        }
+        className="rounded-full bg-white/10 px-3 py-1 text-white hover:bg-white/20"
+        aria-label={
+          isArabic
+            ? "الشريحة التالية"
+            : "Next Slide"
+        }
+      >
+        {isArabic ? "←" : "→"}
+      </button>
+    </div>
+  </div>
+)}
 
         {/* Big circular timer */}
         <div
