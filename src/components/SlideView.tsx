@@ -28,12 +28,12 @@ export function SlideImage({ pageNumber, alt }: { pageNumber?: number; alt: stri
     );
 
   return (
-    <img
+      <img
       src={src}
       alt={alt}
       className="h-full w-full rounded-lg bg-white object-contain"
       loading="lazy"
-    />
+    /> 
   );
 }
 
@@ -115,6 +115,13 @@ export function SlideView({
               </ul>
             </div>
             <div className="min-h-[180px]">
+              {slide.imageUrl && (
+    <img
+      src={slide.imageUrl}
+      alt={slide.title || ""}
+      className="mb-3 max-h-48 w-full rounded-lg object-contain"
+    />
+  )}
               <SlideImage pageNumber={slide.pageNumber} alt={slide.title} />
             </div>
           </div>

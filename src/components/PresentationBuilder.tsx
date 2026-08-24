@@ -613,443 +613,399 @@ export function PresentationBuilder({
 
             {/* قائمة الشرائح */}
             <ul className="space-y-2">
-              {slides.map(
-                (
-                  slide,
-                  index,
-                ) => (
-                  <li
-                    key={`${slide.id}-${index}`}
-                    draggable
-                    onDragStart={() => {
-                      dragIdx.current =
-                        index;
+  {slides.map((slide, index) => {
+    const isPreviewOpen = preview === index;
+    const isEditingOpen = editing === index;
+
+    return (
+      <li
+        key={`${slide.id}-${index}`}
+        className={`rounded-lg border bg-card p-3 transition-colors ${
+          isEditingOpen
+            ? "border-primary/40 ring-1 ring-primary/10"
+            : ""
+        }`}
+      >
+        {/* =========================
+            رأس الشريحة
+        ========================= */}
+
+        <div className="flex flex-wrap items-center gap-2">
+          {/* المرحلة */}
+          <span
+            className="rounded px-2 py-0.5 text-[11px] font-bold text-white"
+            style={{
+              background:
+                PHASE_LABELS[slide.phase]?.color ??
+                "#888",
+            }}
+          >
+            {phaseName(slide.phase)}
+          </span>
+
+          {/* اسم الشريحة */}
+          <div className="min-w-0 flex-1 truncate px-1 text-sm font-bold text-primary">
+            {slide.title ||
+              (isArabic
+                ? "بدون عنوان"
+                : "Untitled Slide")}
+          </div>
+
+          {/* لأعلى */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              move(index, index - 1);
+            }}
+            disabled={index === 0}
+            className="rounded p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label={
+              isArabic
+                ? "تحريك لأعلى"
+                : "Move Up"
+            }
+            title={
+              isArabic
+                ? "تحريك لأعلى"
+                : "Move Up"
+            }
+          >
+            <ChevronRight className="h-4 w-4 rotate-90" />
+          </button>
+
+          {/* لأسفل */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              move(index, index + 1);
+            }}
+            disabled={
+              index === slides.length - 1
+            }
+            className="rounded p-1 hover:bg-accent disabled:cursor-not-allowed disabled:opacity-30"
+            aria-label={
+              isArabic
+                ? "تحريك لأسفل"
+                : "Move Down"
+            }
+            title={
+              isArabic
+                ? "تحريك لأسفل"
+                : "Move Down"
+            }
+          >
+            <ChevronLeft className="h-4 w-4 rotate-90" />
+          </button>
+
+          {/* معاينة */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              setPreview(
+                isPreviewOpen
+                  ? null
+                  : index,
+              );
+
+              // فتح المعاينة يغلق التعديل
+              if (!isPreviewOpen) {
+                setEditing(null);
+              }
+            }}
+            className={`rounded px-2 py-1 text-xs font-medium transition-colors ${
+              isPreviewOpen
+                ? "bg-accent text-primary"
+                : "hover:bg-accent"
+            }`}
+          >
+            {isArabic
+              ? isPreviewOpen
+                ? "إغلاق المعاينة"
+                : "معاينة"
+              : isPreviewOpen
+                ? "Close Preview"
+                : "Preview"}
+          </button>
+
+          {/* تعديل */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              if (isEditingOpen) {
+                setEditing(null);
+              } else {
+                setEditing(index);
+
+                // فتح التعديل يغلق المعاينة
+                setPreview(null);
+              }
+            }}
+            className={`inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-bold transition-colors ${
+              isEditingOpen
+                ? "bg-primary text-primary-foreground"
+                : "text-primary hover:bg-accent"
+            }`}
+          >
+            <Pencil className="h-3.5 w-3.5" />
+
+            {isArabic
+              ? isEditingOpen
+                ? "إغلاق التعديل"
+                : "تعديل"
+              : isEditingOpen
+                ? "Close Edit"
+                : "Edit"}
+          </button>
+
+          {/* حذف */}
+          <button
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+
+              removeSlide(index);
+            }}
+            className="rounded p-1 text-destructive hover:bg-destructive/10"
+            aria-label={
+              isArabic
+                ? "حذف"
+                : "Delete"
+            }
+            title={
+              isArabic
+                ? "حذف"
+                : "Delete"
+            }
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+
+        {/* =========================
+            معاينة الشريحة
+        ========================= */}
+
+        {isPreviewOpen && (
+          <div className="mt-3 rounded-lg border bg-muted/10 p-3">
+            <div className="h-72">
+              <SlideView
+                slide={slide}
+                index={index}
+                count={slides.length}
+                topic={plan.topic}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* =========================
+            محرر الشريحة
+        ========================= */}
+
+        {isEditingOpen && (
+          <div
+            className="mt-3 space-y-4 rounded-xl border border-primary/30 bg-muted/20 p-4"
+            dir={
+              isArabic
+                ? "rtl"
+                : "ltr"
+            }
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-black text-primary">
+                <Pencil className="h-4 w-4" />
+
+                {isArabic
+                  ? "تعديل الشريحة"
+                  : "Edit Slide"}
+              </div>
+
+              <span className="text-[11px] text-muted-foreground">
+                {isArabic
+                  ? `الشريحة ${index + 1}`
+                  : `Slide ${index + 1}`}
+              </span>
+            </div>
+
+            {/* عنوان الشريحة */}
+            <div>
+              <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                {isArabic
+                  ? "عنوان الشريحة"
+                  : "Slide Title"}
+              </label>
+
+              <input
+                type="text"
+                value={slide.title ?? ""}
+                onChange={(event) => {
+                  patch(index, {
+                    title:
+                      event.target.value,
+                  });
+                }}
+                className="w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                placeholder={
+                  isArabic
+                    ? "اكتب عنوان الشريحة"
+                    : "Enter slide title"
+                }
+              />
+            </div>
+
+            {/* الغلاف */}
+            {slide.type === "cover" && (
+              <div className="rounded-lg border border-dashed bg-background/60 p-3 text-xs text-muted-foreground">
+                {isArabic
+                  ? "هذه شريحة الغلاف. يمكنك تعديل عنوانها من الحقل أعلاه."
+                  : "This is the cover slide. You can edit its title above."}
+              </div>
+            )}
+
+            {/* محتوى الشرائح */}
+            {slide.type !== "cover" && (
+              <>
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                    {isArabic
+                      ? "نقاط الشريحة"
+                      : "Slide Points"}
+                  </label>
+
+                  <textarea
+                    value={(
+                      slide.points ?? []
+                    ).join("\n")}
+                    onChange={(event) => {
+                      patch(index, {
+                        points:
+                          event.target.value.split(
+                            "\n",
+                          ),
+                      });
                     }}
-                    onDragOver={(
-                      e,
-                    ) =>
-                      e.preventDefault()
+                    rows={5}
+                    placeholder={
+                      isArabic
+                        ? "اكتب كل نقطة في سطر منفصل"
+                        : "Write one point per line"
                     }
-                    onDrop={() => {
-                      if (
-                        dragIdx.current !==
-                        null
-                      ) {
-                        move(
-                          dragIdx.current,
-                          index,
-                        );
-                      }
+                    className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
+                </div>
 
-                      dragIdx.current =
-                        null;
+                <div>
+                  <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                    {isArabic
+                      ? "السؤال التفاعلي"
+                      : "Interactive Question"}
+                  </label>
+
+                  <textarea
+                    value={
+                      slide.question ?? ""
+                    }
+                    onChange={(event) => {
+                      patch(index, {
+                        question:
+                          event.target.value,
+                      });
                     }}
-                    className="rounded-lg border bg-card p-2"
-                  >
-                    {/* رأس الشريحة */}
-                    <div className="flex flex-wrap items-center gap-2">
+                    rows={2}
+                    placeholder={
+                      isArabic
+                        ? "اكتب سؤالاً تفاعلياً للطالب"
+                        : "Enter an interactive question"
+                    }
+                    className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                  />
+                </div>
+              </>
+            )}
 
-                      <span
-                        className="rounded px-2 py-0.5 text-[11px] font-bold text-white"
-                        style={{
-                          background:
-                            PHASE_LABELS[
-                              slide.phase
-                            ]
-                              ?.color ??
-                            "#888",
-                        }}
-                      >
-                        {phaseName(
-                          slide.phase,
-                        )}
-                      </span>
+            {/* الواجب */}
+            {slide.type === "homework" && (
+              <div>
+                <label className="mb-1 block text-xs font-bold text-muted-foreground">
+                  {isArabic
+                    ? "محتوى الواجب المنزلي"
+                    : "Homework Content"}
+                </label>
 
-                      {/* العنوان يظهر كنص وليس input */}
-                      <div className="min-w-0 flex-1 truncate px-1 text-sm font-bold text-primary">
-                        {slide.title ||
-                          (isArabic
-                            ? "بدون عنوان"
-                            : "Untitled Slide")}
-                      </div>
+                <textarea
+                  value={
+                    slide.homework ?? ""
+                  }
+                  onChange={(event) => {
+                    patch(index, {
+                      homework:
+                        event.target.value,
+                    });
+                  }}
+                  rows={4}
+                  placeholder={
+                    isArabic
+                      ? "اكتب الواجب المنزلي"
+                      : "Enter homework content"
+                  }
+                  className="w-full resize-y rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+                />
+              </div>
+            )}
 
-                      {/* لأعلى */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          move(
-                            index,
-                            index -
-                              1,
-                          )
-                        }
-                        disabled={
-                          index ===
-                          0
-                        }
-                        className="rounded p-1 hover:bg-accent disabled:opacity-30"
-                        aria-label={
-                          isArabic
-                            ? "لأعلى"
-                            : "Move Up"
-                        }
-                        title={
-                          isArabic
-                            ? "لأعلى"
-                            : "Move Up"
-                        }
-                      >
-                        <ChevronRight className="h-4 w-4 rotate-90" />
-                      </button>
+            {/* أزرار المحرر */}
+            <div className="flex flex-wrap justify-end gap-2 border-t pt-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(null);
 
-                      {/* لأسفل */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          move(
-                            index,
-                            index +
-                              1,
-                          )
-                        }
-                        disabled={
-                          index ===
-                          slides.length -
-                            1
-                        }
-                        className="rounded p-1 hover:bg-accent disabled:opacity-30"
-                        aria-label={
-                          isArabic
-                            ? "لأسفل"
-                            : "Move Down"
-                        }
-                        title={
-                          isArabic
-                            ? "لأسفل"
-                            : "Move Down"
-                        }
-                      >
-                        <ChevronLeft className="h-4 w-4 rotate-90" />
-                      </button>
+                  setPreview(index);
+                }}
+                className="rounded-lg border px-4 py-2 text-xs font-bold hover:bg-accent"
+              >
+                {isArabic
+                  ? "معاينة التعديل"
+                  : "Preview Changes"}
+              </button>
 
-                      {/* معاينة */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setPreview(
-                            preview ===
-                              index
-                              ? null
-                              : index,
-                          );
+              <button
+                type="button"
+                onClick={() => {
+                  setEditing(null);
 
-                          /*
-                           * عند فتح المعاينة
-                           * نغلق التعديل لنظافة الواجهة.
-                           */
-                          if (
-                            preview !==
-                            index
-                          ) {
-                            setEditing(
-                              null,
-                            );
-                          }
-                        }}
-                        className="rounded px-2 py-1 text-xs hover:bg-accent"
-                      >
-                        {isArabic
-                          ? "معاينة"
-                          : "Preview"}
-                      </button>
-
-                      {/* تعديل */}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditing(
-                            editing ===
-                              index
-                              ? null
-                              : index,
-                          );
-
-                          /*
-                           * عند فتح التعديل
-                           * نغلق المعاينة.
-                           */
-                          if (
-                            editing !==
-                            index
-                          ) {
-                            setPreview(
-                              null,
-                            );
-                          }
-                        }}
-                        className="inline-flex items-center gap-1 rounded px-2 py-1 text-xs font-bold text-primary hover:bg-accent"
-                      >
-                        <Pencil className="h-3.5 w-3.5" />
-
-                        {isArabic
-                          ? "تعديل"
-                          : "Edit"}
-                      </button>
-
-                      {/* حذف */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          removeSlide(
-                            index,
-                          )
-                        }
-                        className="rounded p-1 text-destructive hover:bg-destructive/10"
-                        aria-label={
-                          isArabic
-                            ? "حذف"
-                            : "Delete"
-                        }
-                        title={
-                          isArabic
-                            ? "حذف"
-                            : "Delete"
-                        }
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    {/* =========================
-                       معاينة الشريحة
-                    ========================= */}
-
-                    {preview ===
-                      index && (
-                      <div className="mt-3 rounded-lg border bg-muted/10 p-3">
-                        <div className="h-72">
-                          <SlideView
-                            slide={
-                              slide
-                            }
-                            index={
-                              index
-                            }
-                            count={
-                              slides.length
-                            }
-                            topic={
-                              plan.topic
-                            }
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    {/* =========================
-                       تعديل الشريحة
-                    ========================= */}
-
-                    {editing ===
-                      index && (
-                      <div
-                        className="mt-3 space-y-4 rounded-lg border border-primary/20 bg-muted/20 p-4"
-                        dir={
-                          isArabic
-                            ? "rtl"
-                            : "ltr"
-                        }
-                      >
-                        <div className="flex items-center gap-2 text-sm font-bold text-primary">
-                          <Pencil className="h-4 w-4" />
-
-                          {isArabic
-                            ? "تعديل الشريحة"
-                            : "Edit Slide"}
-                        </div>
-
-                        {/* عنوان الشريحة */}
-                        <div>
-                          <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                            {isArabic
-                              ? "عنوان الشريحة"
-                              : "Slide Title"}
-                          </label>
-
-                          <input
-                            value={
-                              slide.title ??
-                              ""
-                            }
-                            onChange={(
-                              e,
-                            ) =>
-                              patch(
-                                index,
-                                {
-                                  title:
-                                    e
-                                      .target
-                                      .value,
-                                },
-                              )
-                            }
-                            className="w-full rounded-lg border bg-background p-2 text-sm"
-                          />
-                        </div>
-
-                        {/* محتوى الغلاف */}
-                        {slide.type ===
-                          "cover" && (
-                          <div className="rounded-lg bg-background/60 p-3 text-xs text-muted-foreground">
-                            {isArabic
-                              ? "هذه شريحة الغلاف. يمكنك تعديل عنوانها من الحقل أعلاه."
-                              : "This is the cover slide. You can edit its title above."}
-                          </div>
-                        )}
-
-                        {/* نقاط وأسئلة الشرائح العادية */}
-                        {slide.type !==
-                          "cover" && (
-                          <>
-                            <div>
-                              <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                                {isArabic
-                                  ? "نقاط الشريحة"
-                                  : "Slide Points"}
-                              </label>
-
-                              <textarea
-                                value={(
-                                  slide.points ??
-                                  []
-                                ).join(
-                                  "\n",
-                                )}
-                                onChange={(
-                                  e,
-                                ) =>
-                                  patch(
-                                    index,
-                                    {
-                                      points:
-                                        e.target.value.split(
-                                          "\n",
-                                        ),
-                                    },
-                                  )
-                                }
-                                rows={
-                                  4
-                                }
-                                placeholder={
-                                  isArabic
-                                    ? "اكتب كل نقطة في سطر"
-                                    : "Write one point per line"
-                                }
-                                className="w-full rounded-lg border bg-background p-2 text-sm"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                                {isArabic
-                                  ? "السؤال التفاعلي"
-                                  : "Interactive Question"}
-                              </label>
-
-                              <input
-                                value={
-                                  slide.question ??
-                                  ""
-                                }
-                                onChange={(
-                                  e,
-                                ) =>
-                                  patch(
-                                    index,
-                                    {
-                                      question:
-                                        e
-                                          .target
-                                          .value,
-                                    },
-                                  )
-                                }
-                                placeholder={
-                                  isArabic
-                                    ? "اكتب سؤالاً تفاعلياً للطالب"
-                                    : "Enter an interactive question for students"
-                                }
-                                className="w-full rounded-lg border bg-background p-2 text-sm"
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {/* الواجب */}
-                        {slide.type ===
-                          "homework" && (
-                          <div>
-                            <label className="mb-1 block text-xs font-bold text-muted-foreground">
-                              {isArabic
-                                ? "محتوى الواجب المنزلي"
-                                : "Homework Content"}
-                            </label>
-
-                            <textarea
-                              value={
-                                slide.homework ??
-                                ""
-                              }
-                              onChange={(
-                                e,
-                              ) =>
-                                patch(
-                                  index,
-                                  {
-                                    homework:
-                                      e
-                                        .target
-                                        .value,
-                                  },
-                                )
-                              }
-                              rows={
-                                4
-                              }
-                              placeholder={
-                                isArabic
-                                  ? "اكتب الواجب المنزلي"
-                                  : "Enter homework content"
-                              }
-                              className="w-full rounded-lg border bg-background p-2 text-sm"
-                            />
-                          </div>
-                        )}
-
-                        {/* تم */}
-                        <div className="flex justify-end">
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setEditing(
-                                null,
-                              )
-                            }
-                            className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
-                          >
-                            {isArabic
-                              ? "تم ✓"
-                              : "Done ✓"}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </li>
-                ),
-              )}
-            </ul>
+                  toast.success(
+                    isArabic
+                      ? "تم حفظ تعديلات الشريحة"
+                      : "Slide changes saved",
+                  );
+                }}
+                className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:opacity-90"
+              >
+                {isArabic
+                  ? "تم ✓"
+                  : "Done ✓"}
+              </button>
+            </div>
+          </div>
+        )}
+      </li>
+    );
+  })}
+</ul>
 
             {/* الأزرار الرئيسية */}
             <div className="flex flex-wrap gap-2">

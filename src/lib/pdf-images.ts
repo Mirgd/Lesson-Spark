@@ -91,7 +91,7 @@ export interface PageImage {
 
 export async function extractPdfAsImages(
   file: File,
-  maxPages = 15,
+  maxPages?: number,
   onProgress?: (done: number, total: number) => void,
 ): Promise<PageImage[]> {
   await import("./map-polyfill");
@@ -139,8 +139,10 @@ export async function extractPdfAsImages(
     data: new Uint8Array(arrayBuffer),
   }).promise;
 
-  const total = Math.min(pdf.numPages, maxPages);
-
+  const total =
+  typeof maxPages === "number"
+    ? Math.min(pdf.numPages, maxPages)
+    : pdf.numPages;
   const images: PageImage[] = [];
 
   for (let i = 1; i <= total; i++) {

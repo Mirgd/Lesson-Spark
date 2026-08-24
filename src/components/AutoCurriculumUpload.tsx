@@ -227,7 +227,7 @@ export function CurriculumAutoUpload({
         pages =
           await extractPdfAsImages(
             file,
-            15,
+            undefined,
             (done, total) => {
               setProgress({
                 step: 1,

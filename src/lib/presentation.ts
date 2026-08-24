@@ -7,6 +7,7 @@ import { getCurrentFileId } from "./pdf-images";
 export type SlidePhase = PhaseId | "cover" | "extend";
 
 export interface Slide {
+  imageUrl?: string;
   id: number;
   type: "cover" | "content" | "homework" | "blank";
   phase: SlidePhase;
