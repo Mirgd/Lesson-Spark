@@ -77,6 +77,7 @@ export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
   const hasPdf = Boolean(sharedFile);
 
   const [preview, setPreview] = useState<number | null>(null);
+  const [editing, setEditing] = useState<number | null>(null);
   const dragIdx = useRef<number | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -478,7 +479,15 @@ export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
                       ? "معاينة"
                       : "Preview"}
                   </button>
-
+                      <button
+                          type="button"
+                          onClick={() =>
+                            setEditing(editing === i ? null : i)
+                          }
+                          className="rounded p-1 text-xs font-medium text-primary hover:bg-accent"
+                        >
+                          {isArabic ? "تعديل" : "Edit"}
+                    </button>
                   <button
                     onClick={() =>
                       removeSlide(i)
@@ -505,6 +514,107 @@ export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
                         topic={plan.topic}
                       />
                     </div>
+                    {editing === i && (
+  <div className="mt-2 space-y-3 rounded-lg border bg-muted/20 p-3">
+
+    <div className="text-sm font-bold text-primary">
+      {isArabic ? "تعديل الشريحة" : "Edit Slide"}
+    </div>
+
+    <div>
+      <label className="mb-1 block text-xs font-medium text-muted-foreground">
+        {isArabic ? "عنوان الشريحة" : "Slide Title"}
+      </label>
+
+      <input
+        value={s.title}
+        onChange={(e) =>
+          patch(i, {
+            title: e.target.value,
+          })
+        }
+        className="w-full rounded border bg-background p-2 text-sm"
+      />
+    </div>
+
+    {s.type !== "cover" && (
+      <>
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            {isArabic ? "النقاط" : "Points"}
+          </label>
+
+          <textarea
+            value={(s.points ?? []).join("\n")}
+            onChange={(e) =>
+              patch(i, {
+                points: e.target.value.split("\n"),
+              })
+            }
+            rows={4}
+            placeholder={
+              isArabic
+                ? "نقطة في كل سطر"
+                : "One point per line"
+            }
+            className="w-full rounded border bg-background p-2 text-sm"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-xs font-medium text-muted-foreground">
+            {isArabic ? "السؤال التفاعلي" : "Interactive Question"}
+          </label>
+
+          <input
+            value={s.question ?? ""}
+            onChange={(e) =>
+              patch(i, {
+                question: e.target.value,
+              })
+            }
+            placeholder={
+              isArabic
+                ? "سؤال تفاعلي للطالب"
+                : "Interactive question for students"
+            }
+            className="w-full rounded border bg-background p-2 text-sm"
+          />
+        </div>
+      </>
+    )}
+
+    {s.type === "homework" && (
+      <div>
+        <label className="mb-1 block text-xs font-medium text-muted-foreground">
+          {isArabic ? "الواجب المنزلي" : "Homework"}
+        </label>
+
+        <textarea
+          value={s.homework ?? ""}
+          onChange={(e) =>
+            patch(i, {
+              homework: e.target.value,
+            })
+          }
+          rows={3}
+          className="w-full rounded border bg-background p-2 text-sm"
+        />
+      </div>
+    )}
+
+    <div className="flex justify-end">
+      <button
+        type="button"
+        onClick={() => setEditing(null)}
+        className="rounded-lg bg-primary px-4 py-2 text-xs font-bold text-primary-foreground"
+      >
+        {isArabic ? "تم" : "Done"}
+      </button>
+    </div>
+
+  </div>
+)}
 
                     {s.type !== "cover" && (
                       <>
@@ -547,24 +657,7 @@ export function PresentationBuilder({ plan }: { plan: LessonPlan }) {
                       </>
                     )}
 
-                    {s.type === "homework" && (
-                      <textarea
-                        value={s.homework ?? ""}
-                        onChange={(e) =>
-                          patch(i, {
-                            homework:
-                              e.target.value,
-                          })
-                        }
-                        rows={3}
-                        placeholder={
-                          isArabic
-                            ? "محتوى الواجب المنزلي"
-                            : "Homework content"
-                        }
-                        className="w-full rounded border p-2 text-sm"
-                      />
-                    )}
+                    
                   </div>
                 )}
               </li>
