@@ -15,9 +15,7 @@ function authError(message: string, isArabic: boolean) {
   const m = message.toLowerCase();
 
   if (m.includes("invalid login credentials")) {
-    return isArabic
-      ? "البريد أو كلمة المرور غير صحيحة"
-      : "Incorrect email or password.";
+    return isArabic ? "البريد أو كلمة المرور غير صحيحة" : "Incorrect email or password.";
   }
 
   if (m.includes("email not confirmed")) {
@@ -26,10 +24,7 @@ function authError(message: string, isArabic: boolean) {
       : "Your email has not been confirmed yet. Please check your confirmation email.";
   }
 
-  if (
-    m.includes("user already registered") ||
-    m.includes("already been registered")
-  ) {
+  if (m.includes("user already registered") || m.includes("already been registered")) {
     return isArabic
       ? "هذا البريد مسجّل مسبقاً — سجّل الدخول"
       : "This email is already registered. Please sign in.";
@@ -51,10 +46,7 @@ function authError(message: string, isArabic: boolean) {
 }
 
 async function redirectAfterLogin(userId: string) {
-  const { data } = await supabase
-    .from("user_roles")
-    .select("role")
-    .eq("user_id", userId);
+  const { data } = await supabase.from("user_roles").select("role").eq("user_id", userId);
 
   const list = (data ?? []).map((r) => r.role as AppRole);
 
@@ -92,43 +84,31 @@ function AuthPage() {
   const login = async () => {
     setBusy(true);
 
-    const { data, error } =
-      await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
 
     setBusy(false);
 
     if (error || !data.user) {
       toast.error(
         authError(
-          error?.message ??
-            (isArabic
-              ? "تعذّر تسجيل الدخول"
-              : "Unable to sign in."),
-          isArabic
-        )
+          error?.message ?? (isArabic ? "تعذّر تسجيل الدخول" : "Unable to sign in."),
+          isArabic,
+        ),
       );
       return;
     }
 
-    toast.success(
-      isArabic
-        ? "تم تسجيل الدخول 👋"
-        : "Signed in successfully 👋"
-    );
+    toast.success(isArabic ? "تم تسجيل الدخول 👋" : "Signed in successfully 👋");
 
     await redirectAfterLogin(data.user.id);
   };
 
   const signup = async () => {
     if (fullName.trim().length < 3) {
-      toast.error(
-        isArabic
-          ? "اكتب الاسم الكامل"
-          : "Please enter your full name."
-      );
+      toast.error(isArabic ? "اكتب الاسم الكامل" : "Please enter your full name.");
       return;
     }
 
@@ -136,17 +116,13 @@ function AuthPage() {
       toast.error(
         isArabic
           ? "كلمة المرور يجب أن تكون ٨ أحرف على الأقل"
-          : "Password must be at least 8 characters."
+          : "Password must be at least 8 characters.",
       );
       return;
     }
 
     if (password !== confirm) {
-      toast.error(
-        isArabic
-          ? "كلمتا المرور غير متطابقتين"
-          : "Passwords do not match."
-      );
+      toast.error(isArabic ? "كلمتا المرور غير متطابقتين" : "Passwords do not match.");
       return;
     }
 
@@ -174,18 +150,14 @@ function AuthPage() {
       toast.success(
         isArabic
           ? "تم إنشاء الحساب — افتح بريدك وأكّد الرابط ثم سجّل الدخول"
-          : "Account created. Check your email, confirm the link, then sign in."
+          : "Account created. Check your email, confirm the link, then sign in.",
       );
 
       setTab("login");
       return;
     }
 
-    toast.success(
-      isArabic
-        ? `أهلاً ${fullName.trim()} 👋`
-        : `Welcome ${fullName.trim()} 👋`
-    );
+    toast.success(isArabic ? `أهلاً ${fullName.trim()} 👋` : `Welcome ${fullName.trim()} 👋`);
 
     await redirectAfterLogin(data.user!.id);
   };
@@ -199,14 +171,11 @@ function AuthPage() {
   const inputCls =
     "w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-gold";
 
-  const labelCls =
-    "mb-1 block text-sm font-bold text-primary";
+  const labelCls = "mb-1 block text-sm font-bold text-primary";
 
   const tabCls = (active: boolean) =>
     `flex-1 rounded-lg px-3 py-2 text-sm font-bold transition-colors ${
-      active
-        ? "border border-gold bg-gold/15 text-gold"
-        : "text-muted-foreground hover:bg-accent"
+      active ? "border border-gold bg-gold/15 text-gold" : "text-muted-foreground hover:bg-accent"
     }`;
 
   return (
@@ -215,20 +184,12 @@ function AuthPage() {
       dir={dir}
     >
       <div className="rounded-2xl border bg-card p-6 shadow-[var(--shadow-soft)]">
-        <h1 className="text-2xl font-black text-primary">
-          {t.auth.loginTitle}
-        </h1>
+        <h1 className="text-2xl font-black text-primary">{t.auth.loginTitle}</h1>
 
-        <p className="mt-1 text-sm text-muted-foreground">
-          {t.auth.loginSubtitle}
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">{t.auth.loginSubtitle}</p>
 
         <div className="mt-5 flex gap-2 rounded-xl border bg-background p-1">
-          <button
-            type="button"
-            onClick={() => setTab("login")}
-            className={tabCls(tab === "login")}
-          >
+          <button type="button" onClick={() => setTab("login")} className={tabCls(tab === "login")}>
             {t.auth.loginTab}
           </button>
 
@@ -244,10 +205,7 @@ function AuthPage() {
         <form onSubmit={submit} className="mt-5 space-y-4">
           {tab === "signup" && (
             <div>
-              <label
-                htmlFor="fullName"
-                className={labelCls}
-              >
+              <label htmlFor="fullName" className={labelCls}>
                 {t.auth.name} *
               </label>
 
@@ -255,24 +213,17 @@ function AuthPage() {
                 id="fullName"
                 required
                 value={fullName}
-                onChange={(e) =>
-                  setFullName(e.target.value)
-                }
+                onChange={(e) => setFullName(e.target.value)}
                 className={inputCls}
                 placeholder={
-                  isArabic
-                    ? "مثال: أ. نورة العتيبي / أ. خالد الحربي"
-                    : "Example: Nora Al-Otaibi"
+                  isArabic ? "مثال: أ. نورة العتيبي / أ. خالد الحربي" : "Example: Nora Al-Otaibi"
                 }
               />
             </div>
           )}
 
           <div>
-            <label
-              htmlFor="email"
-              className={labelCls}
-            >
+            <label htmlFor="email" className={labelCls}>
               {t.auth.emailLabel} *
             </label>
 
@@ -282,19 +233,14 @@ function AuthPage() {
               required
               dir="ltr"
               value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
+              onChange={(e) => setEmail(e.target.value)}
               className={inputCls}
               placeholder="name@school.edu.sa"
             />
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className={labelCls}
-            >
+            <label htmlFor="password" className={labelCls}>
               {t.auth.passwordLabel} *
             </label>
 
@@ -304,19 +250,14 @@ function AuthPage() {
               required
               dir="ltr"
               value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
+              onChange={(e) => setPassword(e.target.value)}
               className={inputCls}
             />
           </div>
 
           {tab === "signup" && (
             <div>
-              <label
-                htmlFor="confirm"
-                className={labelCls}
-              >
+              <label htmlFor="confirm" className={labelCls}>
                 {t.auth.confirmPassword} *
               </label>
 
@@ -326,9 +267,7 @@ function AuthPage() {
                 required
                 dir="ltr"
                 value={confirm}
-                onChange={(e) =>
-                  setConfirm(e.target.value)
-                }
+                onChange={(e) => setConfirm(e.target.value)}
                 className={inputCls}
               />
             </div>
@@ -347,9 +286,7 @@ function AuthPage() {
               <UserPlus className="h-4 w-4" />
             )}
 
-            {tab === "login"
-              ? t.auth.loginButton
-              : t.auth.createAccount}
+            {tab === "login" ? t.auth.loginButton : t.auth.createAccount}
           </button>
         </form>
       </div>

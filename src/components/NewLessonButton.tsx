@@ -10,10 +10,7 @@ interface Props {
   label?: string;
 }
 
-export function NewLessonButton({
-  variant = "ghost",
-  label,
-}: Props) {
+export function NewLessonButton({ variant = "ghost", label }: Props) {
   const { language } = useUiLanguage();
   const isArabic = language === "ar";
 
@@ -22,13 +19,9 @@ export function NewLessonButton({
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
 
-  const hasContent =
-    completionRatio(plan) > 0 ||
-    plan.topic.trim().length > 0;
+  const hasContent = completionRatio(plan) > 0 || plan.topic.trim().length > 0;
 
-  const buttonLabel =
-    label ??
-    (isArabic ? "درس جديد" : "New Lesson");
+  const buttonLabel = label ?? (isArabic ? "درس جديد" : "New Lesson");
 
   const reset = () => {
     void (async () => {
@@ -45,9 +38,7 @@ export function NewLessonButton({
 
   const saveAndReset = () => {
     setLessons((prev) => {
-      const filtered = prev.filter(
-        (l) => l.id !== plan.id
-      );
+      const filtered = prev.filter((l) => l.id !== plan.id);
 
       return [
         {
@@ -58,11 +49,7 @@ export function NewLessonButton({
       ];
     });
 
-    toast.success(
-      isArabic
-        ? "تم حفظ الدرس الحالي"
-        : "Current lesson saved"
-    );
+    toast.success(isArabic ? "تم حفظ الدرس الحالي" : "Current lesson saved");
 
     reset();
   };
@@ -84,10 +71,7 @@ export function NewLessonButton({
 
   return (
     <>
-      <button
-        onClick={onClick}
-        className={cls}
-      >
+      <button onClick={onClick} className={cls}>
         <Plus className="h-4 w-4" />
         {buttonLabel}
       </button>
@@ -100,9 +84,7 @@ export function NewLessonButton({
           <div
             dir={isArabic ? "rtl" : "ltr"}
             className="w-full max-w-md rounded-xl bg-card p-6 shadow-xl"
-            onClick={(e) =>
-              e.stopPropagation()
-            }
+            onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-bold text-primary">
               {isArabic
@@ -118,32 +100,24 @@ export function NewLessonButton({
 
             <div className="mt-5 flex flex-wrap justify-end gap-2">
               <button
-                onClick={() =>
-                  setOpen(false)
-                }
+                onClick={() => setOpen(false)}
                 className="rounded-lg border bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
               >
-                {isArabic
-                  ? "إلغاء"
-                  : "Cancel"}
+                {isArabic ? "إلغاء" : "Cancel"}
               </button>
 
               <button
                 onClick={reset}
                 className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive/10"
               >
-                {isArabic
-                  ? "ابدأ بدون حفظ"
-                  : "Start Without Saving"}
+                {isArabic ? "ابدأ بدون حفظ" : "Start Without Saving"}
               </button>
 
               <button
                 onClick={saveAndReset}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
               >
-                {isArabic
-                  ? "حفظ وابدأ جديد"
-                  : "Save & Start New"}
+                {isArabic ? "حفظ وابدأ جديد" : "Save & Start New"}
               </button>
             </div>
           </div>

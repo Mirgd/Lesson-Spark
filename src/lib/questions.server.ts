@@ -26,7 +26,10 @@ function parse(raw: string): PhaseQuestions | null {
     try {
       // قد ينتهي خرج النموذج بعد سؤال مكتمل وقبل إغلاق المصفوفات؛ احتفظ
       // بالأسئلة المكتملة وأغلق بنية JSON بدلاً من إسقاط خط المعالجة كله.
-      parsed = JSON.parse(repairJson(start >= 0 ? clean.slice(start) : clean)) as Record<string, unknown>;
+      parsed = JSON.parse(repairJson(start >= 0 ? clean.slice(start) : clean)) as Record<
+        string,
+        unknown
+      >;
     } catch {
       return null;
     }
@@ -81,7 +84,10 @@ ${data.text.slice(0, 5000)}
 مفاتيح JSON ومسميات المراحل تبقى كما هي.
 
 ${langInstruction(data.lang)}`;
-  const raw = await callAiGateway({ messages: [{ role: "user", content: prompt }], maxTokens: 4000 });
+  const raw = await callAiGateway({
+    messages: [{ role: "user", content: prompt }],
+    maxTokens: 4000,
+  });
   const parsed = parse(raw);
   if (parsed) return parsed;
   failParse(raw);

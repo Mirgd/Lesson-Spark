@@ -3,10 +3,15 @@ import { useCallback, useEffect, useState } from "react";
 import type { PhaseId } from "./lesson-types";
 import { getCurrentFileId } from "./pdf-images";
 
-
 export type SlidePhase = PhaseId | "cover" | "extend";
 
 export interface Slide {
+  videoDataUrl?: string;
+  videoName?: string;
+
+  audioDataUrl?: string;
+  audioName?: string;
+
   imageDataUrl?: string;
   imageUrl?: string;
   id: number;
@@ -118,10 +123,7 @@ export async function putPageImage(pageNumber: number, dataUrl: string, fileId?:
   db.close();
 }
 
-export async function getPageImage(
-  pageNumber: number,
-  fileId?: string,
-): Promise<string | null> {
+export async function getPageImage(pageNumber: number, fileId?: string): Promise<string | null> {
   const id = fileId ?? getCurrentFileId();
   if (!id) return null;
   const db = await openDb();
@@ -164,7 +166,6 @@ export async function keepOnlyFile(fileId: string) {
   });
   db.close();
 }
-
 
 /* ---------------- Build ---------------- */
 
@@ -253,12 +254,8 @@ export async function listPageNumbers(fileId?: string): Promise<number[]> {
     .map((k) => Number(k.slice(prefix.length)))
     .filter((n) => Number.isFinite(n))
     .sort((a, b) => a - b);
-
 }
-export async function downloadPresentationPptx(
-  slides: Slide[],
-  fileName = "lesson-presentation",
-) {
+export async function downloadPresentationPptx(slides: Slide[], fileName = "lesson-presentation") {
   const pptx = new pptxgen();
 
   pptx.layout = "LAYOUT_WIDE";
@@ -280,34 +277,21 @@ export async function downloadPresentationPptx(
        تحديد الصورة التي ستستخدمها الشريحة
     ===================================================== */
 
-    let imageData: string | null =
-      item.imageDataUrl ||
-      item.imageUrl ||
-      null;
+    let imageData: string | null = item.imageDataUrl || item.imageUrl || null;
 
     /*
      * إذا لم تضف المعلمة صورة يدوياً،
      * نحاول أخذ صورة صفحة الكتاب.
      */
-    if (
-      !imageData &&
-      item.pageNumber != null
-    ) {
+    if (!imageData && item.pageNumber != null) {
       try {
-        imageData =
-          await getPageImage(
-            item.pageNumber,
-          );
+        imageData = await getPageImage(item.pageNumber);
       } catch (error) {
-        console.warn(
-          `Unable to load page image for page ${item.pageNumber}`,
-          error,
-        );
+        console.warn(`Unable to load page image for page ${item.pageNumber}`, error);
       }
     }
 
-    const hasImage =
-      Boolean(imageData);
+    const hasImage = Boolean(imageData);
 
     /* =====================================================
        الخلفية
@@ -317,73 +301,61 @@ export async function downloadPresentationPptx(
       color: "FFFFFF",
     };
 
-    slide.addShape(
-      pptx.ShapeType.rect,
-      {
-        x: 0,
-        y: 0,
-        w: 13.333,
-        h: 0.18,
-        fill: {
-          color: "B8860B",
-        },
-        line: {
-          color: "B8860B",
-        },
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 0,
+      y: 0,
+      w: 13.333,
+      h: 0.18,
+      fill: {
+        color: "B8860B",
       },
-    );
+      line: {
+        color: "B8860B",
+      },
+    });
 
     /* =====================================================
        Cover Slide
     ===================================================== */
 
     if (item.type === "cover") {
-      slide.addText(
-        item.title || "درس اليوم",
-        {
-          x: 1,
-          y: 0.8,
-          w: 11.3,
-          h: 0.8,
-          fontSize: 30,
-          bold: true,
-          align: "center",
-          color: "1B2A4A",
-          rtlMode: true,
-          margin: 0.08,
-        },
-      );
+      slide.addText(item.title || "درس اليوم", {
+        x: 1,
+        y: 0.8,
+        w: 11.3,
+        h: 0.8,
+        fontSize: 30,
+        bold: true,
+        align: "center",
+        color: "1B2A4A",
+        rtlMode: true,
+        margin: 0.08,
+      });
 
       if (item.subject) {
-        slide.addText(
-          item.subject,
-          {
-            x: 1,
-            y: 1.7,
-            w: 11.3,
-            h: 0.45,
-            fontSize: 18,
-            align: "center",
-            color: "666666",
-            rtlMode: true,
-          },
-        );
+        slide.addText(item.subject, {
+          x: 1,
+          y: 1.7,
+          w: 11.3,
+          h: 0.45,
+          fontSize: 18,
+          align: "center",
+          color: "666666",
+          rtlMode: true,
+        });
       }
 
       if (item.grade) {
-        slide.addText(
-          item.grade,
-          {
-            x: 1,
-            y: 2.15,
-            w: 11.3,
-            h: 0.4,
-            fontSize: 16,
-            align: "center",
-            color: "888888",
-            rtlMode: true,
-          },
-        );
+        slide.addText(item.grade, {
+          x: 1,
+          y: 2.15,
+          w: 11.3,
+          h: 0.4,
+          fontSize: 16,
+          align: "center",
+          color: "888888",
+          rtlMode: true,
+        });
       }
 
       /*
@@ -399,57 +371,36 @@ export async function downloadPresentationPptx(
         });
       }
 
-      if (
-        item.outcomes &&
-        item.outcomes.length > 0
-      ) {
-        const outcomesY =
-          hasImage ? 5.15 : 3.25;
+      if (item.outcomes && item.outcomes.length > 0) {
+        const outcomesY = hasImage ? 5.15 : 3.25;
 
-        slide.addText(
-          "نواتج التعلم",
-          {
-            x: 1.2,
-            y: outcomesY,
-            w: 10.9,
-            h: 0.4,
-            fontSize: 18,
-            bold: true,
-            align: "right",
-            color: "B8860B",
-            rtlMode: true,
-          },
-        );
+        slide.addText("نواتج التعلم", {
+          x: 1.2,
+          y: outcomesY,
+          w: 10.9,
+          h: 0.4,
+          fontSize: 18,
+          bold: true,
+          align: "right",
+          color: "B8860B",
+          rtlMode: true,
+        });
 
-        const outcomesText =
-          item.outcomes
-            .map(
-              (outcome) =>
-                `• ${outcome}`,
-            )
-            .join("\n");
+        const outcomesText = item.outcomes.map((outcome) => `• ${outcome}`).join("\n");
 
-        slide.addText(
-          outcomesText,
-          {
-            x: 1.2,
-            y:
-              outcomesY +
-              0.45,
-            w: 10.9,
-            h:
-              hasImage
-                ? 1.3
-                : 2.3,
-            fontSize: 14,
-            align: "right",
-            valign: "top",
-            color: "1B2A4A",
-            rtlMode: true,
-            breakLine: false,
-            margin: 0.1,
-          },
-        );
+        slide.addText(outcomesText, {
+          x: 1.2,
+          y: outcomesY + 0.45,
+          w: 10.9,
+          h: hasImage ? 1.3 : 2.3,
+          fontSize: 14,
+          align: "right",
+          valign: "top",
+          color: "1B2A4A",
+          rtlMode: true,
+          breakLine: false,
+          margin: 0.1,
+        });
       }
 
       continue;
@@ -459,25 +410,18 @@ export async function downloadPresentationPptx(
        Content / Blank Slide
     ===================================================== */
 
-    if (
-      item.type === "content" ||
-      item.type === "blank"
-    ) {
-      slide.addText(
-        item.title ||
-          "عنوان الشريحة",
-        {
-          x: 0.8,
-          y: 0.55,
-          w: 11.7,
-          h: 0.65,
-          fontSize: 24,
-          bold: true,
-          align: "right",
-          color: "1B2A4A",
-          rtlMode: true,
-        },
-      );
+    if (item.type === "content" || item.type === "blank") {
+      slide.addText(item.title || "عنوان الشريحة", {
+        x: 0.8,
+        y: 0.55,
+        w: 11.7,
+        h: 0.65,
+        fontSize: 24,
+        bold: true,
+        align: "right",
+        color: "1B2A4A",
+        rtlMode: true,
+      });
 
       /*
        * إذا هناك صورة:
@@ -486,36 +430,23 @@ export async function downloadPresentationPptx(
        * إذا لا توجد:
        * النص يستخدم العرض بالكامل.
        */
-      const textWidth =
-        hasImage ? 6.1 : 11.5;
+      const textWidth = hasImage ? 6.1 : 11.5;
 
-      if (
-        item.points &&
-        item.points.length > 0
-      ) {
-        const pointsText =
-          item.points
-            .map(
-              (point) =>
-                `• ${point}`,
-            )
-            .join("\n");
+      if (item.points && item.points.length > 0) {
+        const pointsText = item.points.map((point) => `• ${point}`).join("\n");
 
-        slide.addText(
-          pointsText,
-          {
-            x: 0.9,
-            y: 1.45,
-            w: textWidth,
-            h: 3.8,
-            fontSize: 18,
-            align: "right",
-            valign: "top",
-            color: "2D3748",
-            rtlMode: true,
-            margin: 0.12,
-          },
-        );
+        slide.addText(pointsText, {
+          x: 0.9,
+          y: 1.45,
+          w: textWidth,
+          h: 3.8,
+          fontSize: 18,
+          align: "right",
+          valign: "top",
+          color: "2D3748",
+          rtlMode: true,
+          margin: 0.12,
+        });
       }
 
       /*
@@ -534,59 +465,46 @@ export async function downloadPresentationPptx(
       }
 
       if (item.question) {
-        slide.addShape(
-          pptx.ShapeType.roundRect,
-          {
-            x: 1,
-            y: 5.55,
-            w: 11.2,
-            h: 1.15,
-            rectRadius: 0.08,
-            fill: {
-              color:
-                "FBF4E3",
-            },
-            line: {
-              color:
-                "B8860B",
-              width: 1,
-            },
+        slide.addShape(pptx.ShapeType.roundRect, {
+          x: 1,
+          y: 5.55,
+          w: 11.2,
+          h: 1.15,
+          rectRadius: 0.08,
+          fill: {
+            color: "FBF4E3",
           },
-        );
+          line: {
+            color: "B8860B",
+            width: 1,
+          },
+        });
 
-        slide.addText(
-          `سؤال للطالب: ${item.question}`,
-          {
-            x: 1.25,
-            y: 5.85,
-            w: 10.7,
-            h: 0.5,
-            fontSize: 16,
-            bold: true,
-            align: "right",
-            color: "1B2A4A",
-            rtlMode: true,
-          },
-        );
+        slide.addText(`سؤال للطالب: ${item.question}`, {
+          x: 1.25,
+          y: 5.85,
+          w: 10.7,
+          h: 0.5,
+          fontSize: 16,
+          bold: true,
+          align: "right",
+          color: "1B2A4A",
+          rtlMode: true,
+        });
       }
 
       /*
        * اسم المرحلة.
        */
-      slide.addText(
-        String(
-          item.phase ?? "",
-        ),
-        {
-          x: 0.6,
-          y: 6.9,
-          w: 2.5,
-          h: 0.3,
-          fontSize: 10,
-          color: "999999",
-          align: "left",
-        },
-      );
+      slide.addText(String(item.phase ?? ""), {
+        x: 0.6,
+        y: 6.9,
+        w: 2.5,
+        h: 0.3,
+        fontSize: 10,
+        color: "999999",
+        align: "left",
+      });
 
       continue;
     }
@@ -595,24 +513,18 @@ export async function downloadPresentationPptx(
        Homework Slide
     ===================================================== */
 
-    if (
-      item.type === "homework"
-    ) {
-      slide.addText(
-        item.title ||
-          "تحدّيك المنزلي",
-        {
-          x: 1,
-          y: 0.8,
-          w: 11.3,
-          h: 0.8,
-          fontSize: 28,
-          bold: true,
-          align: "center",
-          color: "1B2A4A",
-          rtlMode: true,
-        },
-      );
+    if (item.type === "homework") {
+      slide.addText(item.title || "تحدّيك المنزلي", {
+        x: 1,
+        y: 0.8,
+        w: 11.3,
+        h: 0.8,
+        fontSize: 28,
+        bold: true,
+        align: "center",
+        color: "1B2A4A",
+        rtlMode: true,
+      });
 
       /*
        * صورة مضافة إلى الواجب.
@@ -627,53 +539,32 @@ export async function downloadPresentationPptx(
         });
       }
 
-      slide.addShape(
-        pptx.ShapeType.roundRect,
-        {
-          x: 1.2,
-          y:
-            hasImage
-              ? 4.35
-              : 2.3,
-          w: 10.9,
-          h:
-            hasImage
-              ? 2
-              : 3,
-          fill: {
-            color:
-              "FBF4E3",
-          },
-          line: {
-            color:
-              "B8860B",
-            width: 1.3,
-          },
+      slide.addShape(pptx.ShapeType.roundRect, {
+        x: 1.2,
+        y: hasImage ? 4.35 : 2.3,
+        w: 10.9,
+        h: hasImage ? 2 : 3,
+        fill: {
+          color: "FBF4E3",
         },
-      );
+        line: {
+          color: "B8860B",
+          width: 1.3,
+        },
+      });
 
-      slide.addText(
-        item.homework ||
-          "لا يوجد واجب محدد.",
-        {
-          x: 1.6,
-          y:
-            hasImage
-              ? 4.75
-              : 2.8,
-          w: 10.1,
-          h:
-            hasImage
-              ? 1.2
-              : 2,
-          fontSize: 20,
-          align: "right",
-          valign: "middle",
-          color: "1B2A4A",
-          rtlMode: true,
-          margin: 0.12,
-        },
-      );
+      slide.addText(item.homework || "لا يوجد واجب محدد.", {
+        x: 1.6,
+        y: hasImage ? 4.75 : 2.8,
+        w: 10.1,
+        h: hasImage ? 1.2 : 2,
+        fontSize: 20,
+        align: "right",
+        valign: "middle",
+        color: "1B2A4A",
+        rtlMode: true,
+        margin: 0.12,
+      });
     }
   }
 
@@ -681,17 +572,9 @@ export async function downloadPresentationPptx(
      File Name
   ===================================================== */
 
-  const safeFileName =
-    fileName
-      .replace(
-        /[\\/:*?"<>|]/g,
-        "-",
-      )
-      .trim() ||
-    "lesson-presentation";
+  const safeFileName = fileName.replace(/[\\/:*?"<>|]/g, "-").trim() || "lesson-presentation";
 
   await pptx.writeFile({
-    fileName:
-      `${safeFileName}.pptx`,
+    fileName: `${safeFileName}.pptx`,
   });
 }

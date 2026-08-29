@@ -2,11 +2,7 @@ import { useUiLanguage } from "@/lib/ui-language";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { Save, Printer } from "lucide-react";
-import {
-  PHASES,
-  useCurrentPlan,
-  useSavedLessons,
-} from "@/lib/lesson-types";
+import { PHASES, useCurrentPlan, useSavedLessons } from "@/lib/lesson-types";
 import { NewLessonButton } from "@/components/NewLessonButton";
 
 export const Route = createFileRoute("/reflection")({
@@ -44,9 +40,7 @@ function Reflection() {
 
   const save = () => {
     setLessons((prev) => {
-      const filtered = prev.filter(
-        (l) => l.id !== plan.id
-      );
+      const filtered = prev.filter((l) => l.id !== plan.id);
 
       return [
         {
@@ -57,11 +51,7 @@ function Reflection() {
       ];
     });
 
-    toast.success(
-      isArabic
-        ? "تم حفظ التأمل مع الدرس"
-        : "Reflection saved with the lesson"
-    );
+    toast.success(isArabic ? "تم حفظ التأمل مع الدرس" : "Reflection saved with the lesson");
   };
 
   return (
@@ -70,8 +60,7 @@ function Reflection() {
         <header
           className="p-6 text-white"
           style={{
-            background:
-              "linear-gradient(135deg, var(--primary), #2a3d6b)",
+            background: "linear-gradient(135deg, var(--primary), #2a3d6b)",
           }}
         >
           <div className="flex items-center gap-3">
@@ -81,30 +70,21 @@ function Reflection() {
 
             <div>
               <h1 className="text-xl font-black">
-                {isArabic
-                  ? "انتهت الحصة"
-                  : "Lesson Completed"}
+                {isArabic ? "انتهت الحصة" : "Lesson Completed"}
               </h1>
 
               <p className="text-xs opacity-80">
-                {new Date().toLocaleString(
-                  isArabic ? "ar" : "en",
-                  {
-                    dateStyle: "long",
-                    timeStyle: "short",
-                  }
-                )}
+                {new Date().toLocaleString(isArabic ? "ar" : "en", {
+                  dateStyle: "long",
+                  timeStyle: "short",
+                })}
               </p>
             </div>
           </div>
 
           <p className="mt-3 text-sm opacity-90">
-            {plan.subject || "—"} ·{" "}
-            {plan.grade || "—"} ·{" "}
-            {plan.topic ||
-              (isArabic
-                ? "بدون موضوع"
-                : "No Topic")}
+            {plan.subject || "—"} · {plan.grade || "—"} ·{" "}
+            {plan.topic || (isArabic ? "بدون موضوع" : "No Topic")}
           </p>
 
           <p className="mt-4 text-sm italic opacity-80">
@@ -117,9 +97,7 @@ function Reflection() {
         <div className="space-y-5 p-6">
           <Field
             label={
-              isArabic
-                ? "ما الذي نجح وأريد الإبقاء عليه؟"
-                : "What worked well and should I keep?"
+              isArabic ? "ما الذي نجح وأريد الإبقاء عليه؟" : "What worked well and should I keep?"
             }
           >
             <textarea
@@ -154,18 +132,14 @@ function Reflection() {
                 })
               }
               placeholder={
-                isArabic
-                  ? "التوقيت، الأدوات، ترتيب المراحل..."
-                  : "Timing, tools, phase order..."
+                isArabic ? "التوقيت، الأدوات، ترتيب المراحل..." : "Timing, tools, phase order..."
               }
             />
           </Field>
 
           <Field
             label={
-              isArabic
-                ? "أي طالب يحتاج دعماً إضافياً؟"
-                : "Which student needs additional support?"
+              isArabic ? "أي طالب يحتاج دعماً إضافياً؟" : "Which student needs additional support?"
             }
           >
             <textarea
@@ -176,11 +150,7 @@ function Reflection() {
                   needsSupport: e.target.value,
                 })
               }
-              placeholder={
-                isArabic
-                  ? "أسماء أو ملاحظات..."
-                  : "Names or notes..."
-              }
+              placeholder={isArabic ? "أسماء أو ملاحظات..." : "Names or notes..."}
             />
           </Field>
 
@@ -193,31 +163,18 @@ function Reflection() {
           >
             <select
               className={inputCls}
-              value={
-                reflection.slowPhase ?? ""
-              }
+              value={reflection.slowPhase ?? ""}
               onChange={(e) =>
                 update({
-                  slowPhase:
-                    e.target.value ||
-                    undefined,
+                  slowPhase: e.target.value || undefined,
                 })
               }
             >
-              <option value="">
-                {isArabic
-                  ? "— اختر مرحلة —"
-                  : "— Select Phase —"}
-              </option>
+              <option value="">{isArabic ? "— اختر مرحلة —" : "— Select Phase —"}</option>
 
               {PHASES.map((m) => (
-                <option
-                  key={m.id}
-                  value={m.id}
-                >
-                  {isArabic
-                    ? m.nameAr
-                    : m.nameEn}
+                <option key={m.id} value={m.id}>
+                  {isArabic ? m.nameAr : m.nameEn}
                 </option>
               ))}
             </select>
@@ -231,21 +188,15 @@ function Reflection() {
             }}
           >
             <div className="mb-1 text-sm font-bold text-primary">
-              📋{" "}
-              {isArabic
-                ? "الواجب المنزلي المخطط"
-                : "Planned Homework"}
+              📋 {isArabic ? "الواجب المنزلي المخطط" : "Planned Homework"}
             </div>
 
-            {plan.homework.studentText.trim() ||
-            plan.homework.teacherNote.trim() ? (
+            {plan.homework.studentText.trim() || plan.homework.teacherNote.trim() ? (
               <div className="space-y-2 text-sm">
                 {plan.homework.teacherNote.trim() && (
                   <p className="whitespace-pre-wrap">
                     <span className="font-bold text-primary">
-                      {isArabic
-                        ? "للمعلم: "
-                        : "Teacher: "}
+                      {isArabic ? "للمعلم: " : "Teacher: "}
                     </span>
 
                     {plan.homework.teacherNote}
@@ -255,9 +206,7 @@ function Reflection() {
                 {plan.homework.studentText.trim() && (
                   <p className="whitespace-pre-wrap">
                     <span className="font-bold text-primary">
-                      {isArabic
-                        ? "للطالب: "
-                        : "Student: "}
+                      {isArabic ? "للطالب: " : "Student: "}
                     </span>
 
                     {plan.homework.studentText}
@@ -275,47 +224,28 @@ function Reflection() {
         </div>
 
         <div className="no-print flex flex-wrap justify-end gap-2 border-t bg-muted/30 p-4">
-          <button
-            onClick={save}
-            className={btnGhost}
-          >
+          <button onClick={save} className={btnGhost}>
             <Save className="h-4 w-4" />
 
-            {isArabic
-              ? "حفظ التأمل"
-              : "Save Reflection"}
+            {isArabic ? "حفظ التأمل" : "Save Reflection"}
           </button>
 
-          <button
-            onClick={() => window.print()}
-            className={btnGhost}
-          >
+          <button onClick={() => window.print()} className={btnGhost}>
             <Printer className="h-4 w-4" />
 
-            {isArabic
-              ? "طباعة التقرير"
-              : "Print Report"}
+            {isArabic ? "طباعة التقرير" : "Print Report"}
           </button>
 
           <NewLessonButton
             variant="primary"
-            label={
-              isArabic
-                ? "خطط درساً جديداً"
-                : "Plan a New Lesson"
-            }
+            label={isArabic ? "خطط درساً جديداً" : "Plan a New Lesson"}
           />
         </div>
       </div>
 
       <div className="no-print mt-4 text-center text-sm">
-        <Link
-          to="/lessons"
-          className="text-primary underline"
-        >
-          {isArabic
-            ? "عرض الدروس المحفوظة"
-            : "View Saved Lessons"}
+        <Link to="/lessons" className="text-primary underline">
+          {isArabic ? "عرض الدروس المحفوظة" : "View Saved Lessons"}
         </Link>
       </div>
     </main>

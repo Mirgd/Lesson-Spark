@@ -14,13 +14,9 @@ export const Route = createFileRoute("/api/public/health")({
         const lovable = process.env["LOVABLE_API_KEY"];
         const unsplash = process.env["UNSPLASH_ACCESS_KEY"];
 
-        const present = (v?: string) =>
-          Boolean(v && v.trim().length > 0);
+        const present = (v?: string) => Boolean(v && v.trim().length > 0);
 
-        const ai =
-          present(gemini) ||
-          present(anthropic) ||
-          present(lovable);
+        const ai = present(gemini) || present(anthropic) || present(lovable);
 
         const geminiRaw = gemini ?? "";
         const anthropicRaw = anthropic ?? "";
@@ -29,11 +25,8 @@ export const Route = createFileRoute("/api/public/health")({
           present: present(gemini),
           length: geminiRaw.length,
           trimmedLength: geminiRaw.trim().length,
-          hasSurroundingWhitespace:
-            geminiRaw !== geminiRaw.trim(),
-          hasQuotes: /^["']|["']$/.test(
-            geminiRaw.trim()
-          ),
+          hasSurroundingWhitespace: geminiRaw !== geminiRaw.trim(),
+          hasQuotes: /^["']|["']$/.test(geminiRaw.trim()),
           hasNewline: /[\r\n]/.test(geminiRaw),
         };
 
@@ -41,16 +34,10 @@ export const Route = createFileRoute("/api/public/health")({
           present: present(anthropic),
           length: anthropicRaw.length,
           trimmedLength: anthropicRaw.trim().length,
-          hasSurroundingWhitespace:
-            anthropicRaw !== anthropicRaw.trim(),
-          hasQuotes: /^["']|["']$/.test(
-            anthropicRaw.trim()
-          ),
+          hasSurroundingWhitespace: anthropicRaw !== anthropicRaw.trim(),
+          hasQuotes: /^["']|["']$/.test(anthropicRaw.trim()),
           hasNewline: /[\r\n]/.test(anthropicRaw),
-          startsWithExpectedPrefix:
-            anthropicRaw
-              .trim()
-              .startsWith("sk-ant-"),
+          startsWithExpectedPrefix: anthropicRaw.trim().startsWith("sk-ant-"),
         };
 
         let probe: {
@@ -62,10 +49,7 @@ export const Route = createFileRoute("/api/public/health")({
           attempted: false,
         };
 
-        const shouldProbe =
-          new URL(request.url).searchParams.get(
-            "probe"
-          ) === "1";
+        const shouldProbe = new URL(request.url).searchParams.get("probe") === "1";
 
         // Gemini probe — first priority
         if (shouldProbe && geminiDiag.present) {
@@ -75,19 +59,15 @@ export const Route = createFileRoute("/api/public/health")({
           };
 
           try {
-            const model =
-              process.env["GEMINI_MODEL"]?.trim() ||
-              "gemini-3.5-flash-lite";
+            const model = process.env["GEMINI_MODEL"]?.trim() || "gemini-3.5-flash-lite";
 
             const res = await fetch(
               `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
               {
                 method: "POST",
                 headers: {
-                  "Content-Type":
-                    "application/json",
-                  "x-goog-api-key":
-                    geminiRaw.trim(),
+                  "Content-Type": "application/json",
+                  "x-goog-api-key": geminiRaw.trim(),
                 },
                 body: JSON.stringify({
                   contents: [
@@ -100,7 +80,7 @@ export const Route = createFileRoute("/api/public/health")({
                     maxOutputTokens: 1,
                   },
                 }),
-              }
+              },
             );
 
             const text = await res.text();
@@ -111,52 +91,36 @@ export const Route = createFileRoute("/api/public/health")({
               probe.error = text.slice(0, 200);
             }
           } catch (e) {
-            probe.error =
-              e instanceof Error
-                ? e.message
-                : String(e);
+            probe.error = e instanceof Error ? e.message : String(e);
           }
         }
 
         // Anthropic fallback probe
-        else if (
-          shouldProbe &&
-          anthropicDiag.present
-        ) {
+        else if (shouldProbe && anthropicDiag.present) {
           probe = {
             attempted: true,
             provider: "anthropic",
           };
 
           try {
-            const res = await fetch(
-              "https://api.anthropic.com/v1/messages",
-              {
-                method: "POST",
-                headers: {
-                  "x-api-key":
-                    anthropicRaw.trim(),
-                  "anthropic-version":
-                    "2023-06-01",
-                  "content-type":
-                    "application/json",
-                },
-                body: JSON.stringify({
-                  model:
-                    process.env[
-                      "ANTHROPIC_MODEL"
-                    ]?.trim() ||
-                    "claude-sonnet-4-5",
-                  max_tokens: 1,
-                  messages: [
-                    {
-                      role: "user",
-                      content: "ping",
-                    },
-                  ],
-                }),
-              }
-            );
+            const res = await fetch("https://api.anthropic.com/v1/messages", {
+              method: "POST",
+              headers: {
+                "x-api-key": anthropicRaw.trim(),
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+              },
+              body: JSON.stringify({
+                model: process.env["ANTHROPIC_MODEL"]?.trim() || "claude-sonnet-4-5",
+                max_tokens: 1,
+                messages: [
+                  {
+                    role: "user",
+                    content: "ping",
+                  },
+                ],
+              }),
+            });
 
             const text = await res.text();
 
@@ -166,10 +130,7 @@ export const Route = createFileRoute("/api/public/health")({
               probe.error = text.slice(0, 200);
             }
           } catch (e) {
-            probe.error =
-              e instanceof Error
-                ? e.message
-                : String(e);
+            probe.error = e instanceof Error ? e.message : String(e);
           }
         }
 
@@ -188,21 +149,16 @@ export const Route = createFileRoute("/api/public/health")({
           keys: {
             GEMINI_API_KEY: geminiDiag,
 
-            ANTHROPIC_API_KEY:
-              anthropicDiag,
+            ANTHROPIC_API_KEY: anthropicDiag,
 
             LOVABLE_API_KEY: {
               present: present(lovable),
-              length: lovable
-                ? lovable.length
-                : 0,
+              length: lovable ? lovable.length : 0,
             },
 
             UNSPLASH_ACCESS_KEY: {
               present: present(unsplash),
-              length: unsplash
-                ? unsplash.length
-                : 0,
+              length: unsplash ? unsplash.length : 0,
             },
           },
 

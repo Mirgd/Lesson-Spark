@@ -70,7 +70,12 @@ export const generateAbsentHomework = createServerFn({ method: "POST" })
       data.topic || "غير محدد"
     }
 نواتج التعلم:
-${data.outcomes.filter(Boolean).map((o) => `- ${o}`).join("\n") || "—"}
+${
+  data.outcomes
+    .filter(Boolean)
+    .map((o) => `- ${o}`)
+    .join("\n") || "—"
+}
 
 محتوى العرض المبني من صور الكتاب:
 ${slidesText}
@@ -117,7 +122,10 @@ ${langInstruction(data.lang)}`;
           }))
         : [],
       selfCheck: Array.isArray(parsed.selfCheck)
-        ? parsed.selfCheck.slice(0, 6).map((s) => str(s)).filter(Boolean)
+        ? parsed.selfCheck
+            .slice(0, 6)
+            .map((s) => str(s))
+            .filter(Boolean)
         : [],
       studentText: str(parsed.studentText),
       teacherNote: str(parsed.teacherNote),

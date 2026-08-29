@@ -4,7 +4,6 @@ import { PhaseImages } from "@/components/PhaseImages";
 import { StudentOutcomes } from "@/components/StudentOutcomes";
 import { RichText } from "@/components/RichText";
 
-
 export const Route = createFileRoute("/student-view")({
   head: () => ({
     meta: [{ title: "شاشة الطالب — المدرسة الرمز" }],
@@ -22,13 +21,10 @@ function StudentViewPage() {
           <div className="text-sm text-muted-foreground">
             {plan.subject || "—"} · {plan.grade || "—"}
           </div>
-          <h1 className="mt-1 text-4xl font-black text-primary">
-            {plan.topic || "موضوع اليوم"}
-          </h1>
+          <h1 className="mt-1 text-4xl font-black text-primary">{plan.topic || "موضوع اليوم"}</h1>
         </div>
 
         <StudentOutcomes plan={plan} />
-
 
         <div className="space-y-4">
           {PHASES.map((meta) => {
@@ -59,7 +55,6 @@ function StudentViewPage() {
                 )}
 
                 <PhaseImages images={data.images} className="mt-3" />
-
               </div>
             );
           })}
@@ -80,7 +75,6 @@ function StudentViewPage() {
               <span className="text-muted-foreground/60 italic">تحدّيك خارج الفصل: ...</span>
             </p>
           )}
-
         </div>
       </div>
     </main>

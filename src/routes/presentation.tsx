@@ -34,7 +34,6 @@ function PresentationPage() {
   const timer = useExecTimer();
   const [showTimer, setShowTimer] = useState(true);
 
-  
   // Sync with execution phase across windows.
   useEffect(() => {
     const sync = () => {

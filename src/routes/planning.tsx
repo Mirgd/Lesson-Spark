@@ -1,16 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { AttendanceTracker } from "@/components/AttendanceTracker";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import {
-  ChevronDown,
-  Printer,
-  Save,
-  Play,
-  Sparkles,
-  Loader2,
-  Monitor,
-} from "lucide-react";
+import { ChevronDown, Printer, Save, Play, Sparkles, Loader2, Monitor } from "lucide-react";
 import type { PhaseImage } from "@/lib/lesson-types";
+import { supabase } from "@/integrations/supabase/client";
 import { PhaseImagePicker } from "@/components/PhaseImagePicker";
 import {
   PHASES,
@@ -19,7 +13,6 @@ import {
   QUESTION_BANKS_EN,
   useCurrentPlan,
   planLang,
-
   useSavedLessons,
   useCurriculum,
   totalDuration,
@@ -43,6 +36,14 @@ import { reportAiError } from "@/lib/ai-error";
 import { currentBundle, upsertPlan } from "@/lib/plans-db";
 import { useSession } from "@/lib/session";
 import { useUiLanguage } from "@/lib/ui-language";
+
+type SchoolClass = {
+  id: string;
+  name_ar: string;
+  name_en: string | null;
+  grade_number: number;
+  section: string | null;
+};
 
 export const Route = createFileRoute("/planning")({
   head: () => ({
@@ -79,67 +80,71 @@ function Planning() {
   const updateHomework = (patch: Partial<LessonPlan["homework"]>) =>
     setPlan((p) => ({ ...p, homework: { ...p.homework, ...patch } }));
 
-const save = async () => {
-  if (!plan.topic.trim()) {
-    toast.warning(
-      isArabic
-        ? "أضف موضوع الدرس أولاً"
-        : "Add the lesson topic first."
-    );
-    return;
-  }
-
-  setLessons((prev) => {
-    const filtered = prev.filter((l) => l.id !== plan.id);
-
-    return [
-      {
-        ...plan,
-        createdAt: new Date().toISOString(),
-      },
-      ...filtered,
-    ];
-  });
-
-  const name = identity?.name;
-
-  if (name) {
-    try {
-      await upsertPlan(currentBundle(plan));
-
-      toast.success(
-        isArabic
-          ? `تم حفظ الخطة باسم ${name}`
-          : `Plan saved under ${name}`
-      );
-
-      return;
-    } catch {
-      toast.error(
-        isArabic
-          ? "تم الحفظ محلياً — تعذّر الحفظ في حسابك"
-          : "Saved locally — unable to save to your account."
-      );
-
+  const save = async () => {
+    if (!plan.topic.trim()) {
+      toast.warning(isArabic ? "أضف موضوع الدرس أولاً" : "Add the lesson topic first.");
       return;
     }
-  }
 
-  toast.success(
+    setLessons((prev) => {
+      const filtered = prev.filter((l) => l.id !== plan.id);
+
+      return [
+        {
+          ...plan,
+          createdAt: new Date().toISOString(),
+        },
+        ...filtered,
+      ];
+    });
+
+    const name = identity?.name;
+
+    if (name) {
+      try {
+        await upsertPlan(currentBundle(plan));
+
+        toast.success(isArabic ? `تم حفظ الخطة باسم ${name}` : `Plan saved under ${name}`);
+
+        navigate({ to: "/lessons" });
+
+        return;
+      } catch (error) {
+  console.error("SAVE PLAN ERROR:", error);
+
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" && error !== null && "message" in error
+        ? String((error as { message?: unknown }).message)
+        : String(error);
+
+  toast.error(
     isArabic
-      ? "تم حفظ الخطة"
-      : "Plan saved successfully."
+      ? `تعذّر حفظ الخطة في الحساب: ${message}`
+      : `Unable to save the plan: ${message}`,
+    {
+      duration: 10000,
+    },
   );
-};
 
+  return;
+}
+    }
+
+    toast.success(isArabic ? "تم حفظ الخطة" : "Plan saved successfully.");
+
+    navigate({ to: "/lessons" });
+  };
 
   const startExecute = () => {
     if (!plan.topic.trim()) {
-toast.warning(
-  isArabic
-    ? "أضف موضوع الدرس قبل بدء التنفيذ"
-    : "Add the lesson topic before starting the lesson."
-);      return;
+      toast.warning(
+        isArabic
+          ? "أضف موضوع الدرس قبل بدء التنفيذ"
+          : "Add the lesson topic before starting the lesson.",
+      );
+      return;
     }
     navigate({ to: "/execute" });
   };
@@ -201,95 +206,83 @@ toast.warning(
 
       setAskAutoFill(false);
 
-toast.success(
-  isArabic
-    ? "✅ تمت تعبئة الخطة — راجع وعدّل ما يلزم"
-    : "✅ Plan generated — review and edit as needed"
-);
-
-} catch (e) {
-  toast.error(
-    reportAiError(
-      e,
-      isArabic ? "التخطيط الذكي" : "AI Planning",
-      isArabic ? "تعذّر توليد الخطة" : "Failed to generate the plan"
-    )
-  );
-} finally {
-  setAutoFilling(false);
-}
+      toast.success(
+        isArabic
+          ? "✅ تمت تعبئة الخطة — راجع وعدّل ما يلزم"
+          : "✅ Plan generated — review and edit as needed",
+      );
+    } catch (e) {
+      toast.error(
+        reportAiError(
+          e,
+          isArabic ? "التخطيط الذكي" : "AI Planning",
+          isArabic ? "تعذّر توليد الخطة" : "Failed to generate the plan",
+        ),
+      );
+    } finally {
+      setAutoFilling(false);
+    }
   };
 
-const autoFillBox = askAutoFill ? (
-  <div className="mt-2 rounded-[10px] border-[1.5px] border-gold/50 bg-gold/10 p-3">
-    <p className="text-[14px] font-semibold leading-relaxed text-primary">
-      ✨{" "}
-      {isArabic
-        ? "أريد أن أملأ خطة الدرس تلقائياً بناءً على موضوع الدرس"
-        : "I want to automatically generate the lesson plan based on the lesson topic"}
-
-      {curriculumText
-        ? isArabic
-          ? " ونص المقرر المرفوع"
-          : " and the uploaded curriculum"
-        : ""}
-    </p>
-
-    <div className="mt-2 flex flex-wrap gap-2">
-      <button
-        onClick={doAutoFill}
-        disabled={autoFilling}
-        className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
-      >
-        {autoFilling ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {isArabic
-              ? "جارٍ إنشاء الخطة..."
-              : "Generating Plan..."}
-          </>
-        ) : (
-          <>
-            <Sparkles className="h-4 w-4" />
-            {isArabic
-              ? "نعم، أنشئ الخطة"
-              : "Yes, Generate the Plan"}
-          </>
-        )}
-      </button>
-
-      <button
-        onClick={() => {
-          setAskAutoFill(false);
-          setAutoFillDismissed(true);
-        }}
-        disabled={autoFilling}
-        className="rounded-lg border-[1.5px] border-[#CBD5E0] bg-card px-4 py-2 text-sm font-semibold text-primary hover:bg-[#F7F9FC]"
-      >
+  const autoFillBox = askAutoFill ? (
+    <div className="mt-2 rounded-[10px] border-[1.5px] border-gold/50 bg-gold/10 p-3">
+      <p className="text-[14px] font-semibold leading-relaxed text-primary">
+        ✨{" "}
         {isArabic
-          ? "لا، سأكتب بنفسي"
-          : "No, I'll Write It Myself"}
-      </button>
+          ? "أريد أن أملأ خطة الدرس تلقائياً بناءً على موضوع الدرس"
+          : "I want to automatically generate the lesson plan based on the lesson topic"}
+        {curriculumText ? (isArabic ? " ونص المقرر المرفوع" : " and the uploaded curriculum") : ""}
+      </p>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          onClick={doAutoFill}
+          disabled={autoFilling}
+          className="inline-flex items-center gap-2 rounded-lg bg-gold px-4 py-2 text-sm font-bold text-white hover:opacity-90 disabled:opacity-60"
+        >
+          {autoFilling ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              {isArabic ? "جارٍ إنشاء الخطة..." : "Generating Plan..."}
+            </>
+          ) : (
+            <>
+              <Sparkles className="h-4 w-4" />
+              {isArabic ? "نعم، أنشئ الخطة" : "Yes, Generate the Plan"}
+            </>
+          )}
+        </button>
+
+        <button
+          onClick={() => {
+            setAskAutoFill(false);
+            setAutoFillDismissed(true);
+          }}
+          disabled={autoFilling}
+          className="rounded-lg border-[1.5px] border-[#CBD5E0] bg-card px-4 py-2 text-sm font-semibold text-primary hover:bg-[#F7F9FC]"
+        >
+          {isArabic ? "لا، سأكتب بنفسي" : "No, I'll Write It Myself"}
+        </button>
+      </div>
     </div>
-  </div>
-) : null;
+  ) : null;
 
   return (
     <main className="mx-auto max-w-3xl px-3 pb-28 pt-6">
       <header className="mb-4 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-black text-primary md:text-3xl">
-  {isArabic ? "التخطيط" : "Planning"}
-</h1>
+            {isArabic ? "التخطيط" : "Planning"}
+          </h1>
 
-<p className="text-sm text-muted-foreground">
-  {isArabic
-    ? "خطط درسك — ثم افتح شاشة الطالب للبروجكتور"
-    : "Plan your lesson — then open the student screen for projection"}
-</p>
+          <p className="text-sm text-muted-foreground">
+            {isArabic
+              ? "خطط درسك — ثم افتح شاشة الطالب للبروجكتور"
+              : "Plan your lesson — then open the student screen for projection"}
+          </p>
         </div>
         <div className="shrink-0 text-xs text-muted-foreground">
-         {isArabic ? "الاكتمال:" : "Completion:"}{" "}
+          {isArabic ? "الاكتمال:" : "Completion:"}{" "}
           <span className={completion === 100 ? "text-primary font-bold" : "font-bold text-gold"}>
             {completion}%
           </span>
@@ -297,160 +290,147 @@ const autoFillBox = askAutoFill ? (
         </div>
       </header>
 
-
       <div className="space-y-4">
-
-          <LessonInfo
-            plan={plan}
-            updateField={updateField}
-            onTopicBlur={onTopicBlur}
-            autoFill={autoFillBox}
-          />
-
-          <div id="lesson-file-upload">
-            <CurriculumAutoUpload plan={plan} setPlan={setPlan} />
-          </div>
-          <OutcomesExtractor
-            subject={plan.subject}
-            grade={plan.grade}
-            topic={plan.topic}
-            lang={planLang(plan)}
-            curriculum={curriculumText}
-            onApply={(outcomes) =>
-              setPlan((p) => ({ ...p, outcomes, objectives: outcomes.join("\n") }))
-            } 
-            existingOutcomes={plan.outcomes}
-          />
-
-          {/* Time bar */}
-<div className="card-elevated p-4">
-  <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
-    <span>
-      {isArabic ? "توزيع الوقت (5E)" : "Time Distribution (5E)"}
-    </span>
-
-    <span className={total !== 55 ? "text-gold" : "text-primary"}>
-      {isArabic
-        ? `إجمالي: ${total} / 55 دقيقة + 5 للواجب = 60`
-        : `Total: ${total} / 55 min + 5 min for homework = 60`}
-    </span>
-  </div>         
-<div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
-  {plan.phases.map((ph) => {
-    const meta = PHASES.find((p) => p.id === ph.id)!;
-
-    return (
-      <div
-        key={ph.id}
-        style={{
-          width: `${(ph.duration / Math.max(total, 1)) * 100}%`,
-          background: meta.color,
-        }}
-        title={`${
-          isArabic ? meta.nameAr : meta.nameEn
-        } — ${ph.duration} ${
-          isArabic ? "دق" : "min"
-        }`}
-      />
-    );
-  })}
-</div>
-
-<div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-  {plan.phases.map((ph) => {
-    const meta = PHASES.find((p) => p.id === ph.id)!;
-
-    return (
-      <span
-        key={ph.id}
-        className="inline-flex items-center gap-1"
-      >
-        <span
-          className="inline-block h-2 w-2 rounded-full"
-          style={{ background: meta.color }}
+        <LessonInfo
+          plan={plan}
+          updateField={updateField}
+          onTopicBlur={onTopicBlur}
+          autoFill={autoFillBox}
         />
 
-        {isArabic ? meta.nameAr : meta.nameEn}{" "}
-        {ph.duration}
-        {isArabic ? "د" : " min"}
-      </span>
-    );
-  })}
-</div>
-</div>
+        <div id="lesson-file-upload">
+          <CurriculumAutoUpload plan={plan} setPlan={setPlan} />
+        </div>
+        <OutcomesExtractor
+          subject={plan.subject}
+          grade={plan.grade}
+          topic={plan.topic}
+          lang={planLang(plan)}
+          curriculum={curriculumText}
+          onApply={(outcomes) =>
+            setPlan((p) => ({ ...p, outcomes, objectives: outcomes.join("\n") }))
+          }
+          existingOutcomes={plan.outcomes}
+        />
 
-          {/* 5E cards */}
-          <div className="space-y-3">
-            {PHASES.map((meta) => {
-              const data = plan.phases.find((p) => p.id === meta.id)!;
+        {/* Time bar */}
+        <div className="card-elevated p-4">
+          <div className="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{isArabic ? "توزيع الوقت (5E)" : "Time Distribution (5E)"}</span>
+
+            <span className={total !== 55 ? "text-gold" : "text-primary"}>
+              {isArabic
+                ? `إجمالي: ${total} / 55 دقيقة + 5 للواجب = 60`
+                : `Total: ${total} / 55 min + 5 min for homework = 60`}
+            </span>
+          </div>
+          <div className="flex h-3 w-full overflow-hidden rounded-full bg-muted">
+            {plan.phases.map((ph) => {
+              const meta = PHASES.find((p) => p.id === ph.id)!;
+
               return (
-                <PhaseCard
-                  key={meta.id}
-                  meta={meta}
-                  data={data}
-                  onChange={(patch) => updatePhase(meta.id, patch)}
-                  context={{
-                    subject: plan.subject,
-                    grade: plan.grade,
-                    topic: plan.topic,
-                    objectives: plan.objectives,
-                    lang: planLang(plan),
+                <div
+                  key={ph.id}
+                  style={{
+                    width: `${(ph.duration / Math.max(total, 1)) * 100}%`,
+                    background: meta.color,
                   }}
+                  title={`${isArabic ? meta.nameAr : meta.nameEn} — ${ph.duration} ${
+                    isArabic ? "دق" : "min"
+                  }`}
                 />
               );
             })}
           </div>
 
-          {/* Homework */}
-          <HomeworkCard
-            homework={plan.homework}
-            update={updateHomework}
-            context={{
-              subject: plan.subject,
-              grade: plan.grade,
-              topic: plan.topic,
-              objectives: plan.objectives,
-              lang: planLang(plan),
-            }}
-          />
+          <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+            {plan.phases.map((ph) => {
+              const meta = PHASES.find((p) => p.id === ph.id)!;
 
-          <PresentationBuilder plan={plan} />
-          <QuestionBank plan={plan} />
-          <WorksheetBuilder plan={plan} />
+              return (
+                <span key={ph.id} className="inline-flex items-center gap-1">
+                  <span
+                    className="inline-block h-2 w-2 rounded-full"
+                    style={{ background: meta.color }}
+                  />
+                  {isArabic ? meta.nameAr : meta.nameEn} {ph.duration}
+                  {isArabic ? "د" : " min"}
+                </span>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 5E cards */}
+        <div className="space-y-3">
+          {PHASES.map((meta) => {
+            const data = plan.phases.find((p) => p.id === meta.id)!;
+            return (
+              <PhaseCard
+                key={meta.id}
+                meta={meta}
+                data={data}
+                onChange={(patch) => updatePhase(meta.id, patch)}
+                context={{
+                  subject: plan.subject,
+                  grade: plan.grade,
+                  topic: plan.topic,
+                  objectives: plan.objectives,
+                  lang: planLang(plan),
+                }}
+              />
+            );
+          })}
+        </div>
+
+        {/* Homework */}
+        <HomeworkCard
+          homework={plan.homework}
+          update={updateHomework}
+          context={{
+            subject: plan.subject,
+            grade: plan.grade,
+            topic: plan.topic,
+            objectives: plan.objectives,
+            lang: planLang(plan),
+          }}
+        />
+
+        <PresentationBuilder plan={plan} />
+        <QuestionBank plan={plan} />
+        <WorksheetBuilder plan={plan} />
       </div>
 
       {/* Bottom action bar */}
       <div className="no-print fixed inset-x-0 bottom-0 z-30 border-t bg-card/95 backdrop-blur">
         <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-end gap-2 px-4 py-3">
           <button onClick={openStudentScreen} className={btnStudent}>
-  <Monitor className="h-4 w-4" />
-  {isArabic ? "افتح شاشة الطالب" : "Open Student Screen"}
-</button>
+            <Monitor className="h-4 w-4" />
+            {isArabic ? "افتح شاشة الطالب" : "Open Student Screen"}
+          </button>
 
-<button onClick={save} className={btnGhost}>
-  <Save className="h-4 w-4" />
-  {isArabic ? "حفظ الخطة" : "Save Plan"}
-</button>
+          <button onClick={save} className={btnGhost}>
+            <Save className="h-4 w-4" />
+            {isArabic ? "حفظ الخطة" : "Save Plan"}
+          </button>
 
-<button onClick={() => window.print()} className={btnGhost}>
-  <Printer className="h-4 w-4" />
-  {isArabic ? "طباعة PDF" : "Print PDF"}
-</button>
+          <button onClick={() => window.print()} className={btnGhost}>
+            <Printer className="h-4 w-4" />
+            {isArabic ? "طباعة PDF" : "Print PDF"}
+          </button>
 
-<button onClick={startExecute} className={btnPrimary}>
-  <Play className="h-4 w-4" />
-  {isArabic ? "ابدأ تنفيذ الدرس" : "Start Lesson"}
-</button>
+          <button onClick={startExecute} className={btnPrimary}>
+            <Play className="h-4 w-4" />
+            {isArabic ? "ابدأ تنفيذ الدرس" : "Start Lesson"}
+          </button>
         </div>
       </div>
-
     </main>
   );
 }
 
 /* ---------------- Lesson info ---------------- */
 function LessonInfo({
-
   plan,
   updateField,
   onTopicBlur,
@@ -461,371 +441,359 @@ function LessonInfo({
   onTopicBlur?: () => void;
   autoFill?: React.ReactNode;
 }) {
-    const { language } = useUiLanguage();
-    const isArabic = language === "ar";
+  const { language } = useUiLanguage();
+  const isArabic = language === "ar";
+  const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
+
+  useEffect(() => {
+    const loadClasses = async () => {
+      const { data, error } = await (supabase as any)
+        .from("school_classes")
+        .select("id, name_ar, name_en, grade_number, section")
+        .order("grade_number", { ascending: true })
+        .order("section", { ascending: true });
+
+      if (error) {
+        console.error("Unable to load classes:", error);
+        return;
+      }
+
+      setSchoolClasses((data ?? []) as SchoolClass[]);
+    };
+
+    loadClasses();
+  }, []);
+
+  const getDayName = (dateValue?: string) => {
+    if (!dateValue) return "";
+
+    const date = new Date(`${dateValue}T12:00:00`);
+
+    return new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-US", {
+      weekday: "long",
+    }).format(date);
+  };
   const subjectLabel = (subject: string) => {
-  if (isArabic) return subject;
+    if (isArabic) return subject;
 
-  const labels: Record<string, string> = {
-    STEM: "STEM",
-    العلوم: "Science",
-    الرياضيات: "Mathematics",
-    الفيزياء: "Physics",
-    الكيمياء: "Chemistry",
-    الأحياء: "Biology",
-    "علوم الأرض": "Earth Science",
-    "علم البيئة": "Environmental Science",
-    الإحصاء: "Statistics",
+    const labels: Record<string, string> = {
+      STEM: "STEM",
+      العلوم: "Science",
+      الرياضيات: "Mathematics",
+      الفيزياء: "Physics",
+      الكيمياء: "Chemistry",
+      الأحياء: "Biology",
+      "علوم الأرض": "Earth Science",
+      "علم البيئة": "Environmental Science",
+      الإحصاء: "Statistics",
 
-    "اللغة العربية": "Arabic Language",
-    "اللغة الإنجليزية": "English Language",
-    "اللغة الفرنسية": "French Language",
-    لغتي: "Arabic Language",
-    المطالعة: "Reading",
-    "النحو والصرف": "Grammar and Morphology",
-    "البلاغة والنقد": "Rhetoric and Criticism",
+      "اللغة العربية": "Arabic Language",
+      "اللغة الإنجليزية": "English Language",
+      "اللغة الفرنسية": "French Language",
+      لغتي: "Arabic Language",
+      المطالعة: "Reading",
+      "النحو والصرف": "Grammar and Morphology",
+      "البلاغة والنقد": "Rhetoric and Criticism",
 
-    "الدراسات الاجتماعية": "Social Studies",
-    التاريخ: "History",
-    الجغرافيا: "Geography",
-    الوطنية: "Civics",
-    "الدراسات الإسلامية": "Islamic Studies",
-    "التربية الإسلامية": "Islamic Education",
-    التفسير: "Quran Interpretation",
-    الحديث: "Hadith",
-    الفقه: "Fiqh",
-    التوحيد: "Tawheed",
-    "القرآن الكريم": "Quran",
-    التجويد: "Tajweed",
-    "السيرة النبوية": "Prophetic Biography",
-    "التربية الأخلاقية": "Moral Education",
-    "علم النفس": "Psychology",
-    "علم الاجتماع": "Sociology",
-    الفلسفة: "Philosophy",
-    الاقتصاد: "Economics",
+      "الدراسات الاجتماعية": "Social Studies",
+      التاريخ: "History",
+      الجغرافيا: "Geography",
+      الوطنية: "Civics",
+      "الدراسات الإسلامية": "Islamic Studies",
+      "التربية الإسلامية": "Islamic Education",
+      التفسير: "Quran Interpretation",
+      الحديث: "Hadith",
+      الفقه: "Fiqh",
+      التوحيد: "Tawheed",
+      "القرآن الكريم": "Quran",
+      التجويد: "Tajweed",
+      "السيرة النبوية": "Prophetic Biography",
+      "التربية الأخلاقية": "Moral Education",
+      "علم النفس": "Psychology",
+      "علم الاجتماع": "Sociology",
+      الفلسفة: "Philosophy",
+      الاقتصاد: "Economics",
 
-    "التقنية الرقمية": "Digital Technology",
-    "الحاسب وتقنية المعلومات": "Computer and Information Technology",
-    "علوم الحاسب": "Computer Science",
-    الروبوت: "Robotics",
-    "الذكاء الاصطناعي": "Artificial Intelligence",
-    "المهارات الرقمية": "Digital Skills",
-    "المهارات الحياتية والأسرية": "Life and Family Skills",
-    "التربية المهنية": "Career Education",
-    "التربية البدنية والدفاع عن النفس": "Physical Education",
-    "التربية الفنية": "Art Education",
-    "التربية الموسيقية": "Music Education",
-    "المسرح والدراما": "Theater and Drama",
-    "التصميم والتكنولوجيا": "Design and Technology",
-    "ريادة الأعمال": "Entrepreneurship",
-    "التفكير الناقد": "Critical Thinking",
+      "التقنية الرقمية": "Digital Technology",
+      "الحاسب وتقنية المعلومات": "Computer and Information Technology",
+      "علوم الحاسب": "Computer Science",
+      الروبوت: "Robotics",
+      "الذكاء الاصطناعي": "Artificial Intelligence",
+      "المهارات الرقمية": "Digital Skills",
+      "المهارات الحياتية والأسرية": "Life and Family Skills",
+      "التربية المهنية": "Career Education",
+      "التربية البدنية والدفاع عن النفس": "Physical Education",
+      "التربية الفنية": "Art Education",
+      "التربية الموسيقية": "Music Education",
+      "المسرح والدراما": "Theater and Drama",
+      "التصميم والتكنولوجيا": "Design and Technology",
+      "ريادة الأعمال": "Entrepreneurship",
+      "التفكير الناقد": "Critical Thinking",
+    };
+
+    return labels[subject] ?? subject;
   };
 
-  return labels[subject] ?? subject;
-};
+  const gradeLabel = (grade: string) => {
+    if (isArabic) return grade;
 
-const gradeLabel = (grade: string) => {
-  if (isArabic) return grade;
+    const labels: Record<string, string> = {
+      "الأول الابتدائي": "Grade 1",
+      "الثاني الابتدائي": "Grade 2",
+      "الثالث الابتدائي": "Grade 3",
+      "الرابع الابتدائي": "Grade 4",
+      "الخامس الابتدائي": "Grade 5",
+      "السادس الابتدائي": "Grade 6",
 
-  const labels: Record<string, string> = {
-    "الأول الابتدائي": "Grade 1",
-    "الثاني الابتدائي": "Grade 2",
-    "الثالث الابتدائي": "Grade 3",
-    "الرابع الابتدائي": "Grade 4",
-    "الخامس الابتدائي": "Grade 5",
-    "السادس الابتدائي": "Grade 6",
+      "الأول المتوسط": "Grade 7",
+      "الثاني المتوسط": "Grade 8",
+      "الثالث المتوسط": "Grade 9",
 
-    "الأول المتوسط": "Grade 7",
-    "الثاني المتوسط": "Grade 8",
-    "الثالث المتوسط": "Grade 9",
+      "الأول الثانوي": "Grade 10",
+      "الثاني الثانوي": "Grade 11",
+      "الثالث الثانوي": "Grade 12",
+    };
 
-    "الأول الثانوي": "Grade 10",
-    "الثاني الثانوي": "Grade 11",
-    "الثالث الثانوي": "Grade 12",
+    return labels[grade] ?? grade;
   };
+  return (
+    <div className="card-elevated p-5">
+      <div className="grid gap-3 md:grid-cols-2">
+        {/* Subject */}
+        <Field label={isArabic ? "المادة" : "Subject"}>
+          <select
+            className={inputCls}
+            value={SUBJECTS.includes(plan.subject) ? plan.subject : plan.subject ? "__other__" : ""}
+            onChange={(e) => {
+              const v = e.target.value;
 
-  return labels[grade] ?? grade;
-};
-return (
-  <div className="card-elevated p-5">
-    <div className="grid gap-3 md:grid-cols-2">
-      {/* Subject */}
-      <Field label={isArabic ? "المادة" : "Subject"}>
-        <select
-          className={inputCls}
-          value={
-            SUBJECTS.includes(plan.subject)
-              ? plan.subject
-              : plan.subject
-                ? "__other__"
-                : ""
-          }
-          onChange={(e) => {
-            const v = e.target.value;
-
-            if (v === "__other__") {
-              updateField("subject", " ");
-            } else {
-              updateField("subject", v);
-            }
-          }}
-        >
-          <option value="">
-            {isArabic ? "— اختر المادة —" : "— Select Subject —"}
-          </option>
-
-          <optgroup
-            label={
-              isArabic
-                ? "العلوم والرياضيات"
-                : "Science & Mathematics"
-            }
+              if (v === "__other__") {
+                updateField("subject", " ");
+              } else {
+                updateField("subject", v);
+              }
+            }}
           >
-            {SUBJECTS_SCIENCE.map((s) => (
-              <option key={s} value={s}>
-                {subjectLabel(s)}
-              </option>
-            ))}
-          </optgroup>
+            <option value="">{isArabic ? "— اختر المادة —" : "— Select Subject —"}</option>
 
-          <optgroup
-            label={isArabic ? "اللغات" : "Languages"}
-          >
-            {SUBJECTS_LANGUAGES.map((s) => (
-              <option key={s} value={s}>
-                {subjectLabel(s)}
-              </option>
-            ))}
-          </optgroup>
+            <optgroup label={isArabic ? "العلوم والرياضيات" : "Science & Mathematics"}>
+              {SUBJECTS_SCIENCE.map((s) => (
+                <option key={s} value={s}>
+                  {subjectLabel(s)}
+                </option>
+              ))}
+            </optgroup>
 
-          <optgroup
-            label={
-              isArabic
-                ? "العلوم الشرعية والاجتماعية"
-                : "Islamic & Social Studies"
-            }
-          >
-            {SUBJECTS_SOCIAL.map((s) => (
-              <option key={s} value={s}>
-                {subjectLabel(s)}
-              </option>
-            ))}
-          </optgroup>
+            <optgroup label={isArabic ? "اللغات" : "Languages"}>
+              {SUBJECTS_LANGUAGES.map((s) => (
+                <option key={s} value={s}>
+                  {subjectLabel(s)}
+                </option>
+              ))}
+            </optgroup>
 
-          <optgroup
-            label={
-              isArabic
-                ? "المهارات والفنون"
-                : "Skills & Arts"
-            }
-          >
-            {SUBJECTS_SKILLS.map((s) => (
-              <option key={s} value={s}>
-                {subjectLabel(s)}
-              </option>
-            ))}
-          </optgroup>
+            <optgroup label={isArabic ? "العلوم الشرعية والاجتماعية" : "Islamic & Social Studies"}>
+              {SUBJECTS_SOCIAL.map((s) => (
+                <option key={s} value={s}>
+                  {subjectLabel(s)}
+                </option>
+              ))}
+            </optgroup>
 
-          <option value="__other__">
-            {isArabic
-              ? "أخرى (اكتب المادة)…"
-              : "Other (type subject)…"}
-          </option>
-        </select>
+            <optgroup label={isArabic ? "المهارات والفنون" : "Skills & Arts"}>
+              {SUBJECTS_SKILLS.map((s) => (
+                <option key={s} value={s}>
+                  {subjectLabel(s)}
+                </option>
+              ))}
+            </optgroup>
 
-        {!SUBJECTS.includes(plan.subject) &&
-          plan.subject !== "" && (
+            <option value="__other__">
+              {isArabic ? "أخرى (اكتب المادة)…" : "Other (type subject)…"}
+            </option>
+          </select>
+
+          {!SUBJECTS.includes(plan.subject) && plan.subject !== "" && (
             <input
               className={`${inputCls} mt-2`}
-              value={
-                plan.subject.trim() === ""
-                  ? ""
-                  : plan.subject
-              }
-              onChange={(e) =>
-                updateField("subject", e.target.value)
-              }
-              placeholder={
-                isArabic
-                  ? "اكتب اسم المادة"
-                  : "Enter subject name"
-              }
+              value={plan.subject.trim() === "" ? "" : plan.subject}
+              onChange={(e) => updateField("subject", e.target.value)}
+              placeholder={isArabic ? "اكتب اسم المادة" : "Enter subject name"}
               autoFocus
             />
           )}
-      </Field>
+        </Field>
 
-      {/* Grade */}
-      <Field label={isArabic ? "الصف" : "Grade"}>
-        <select
-          className={inputCls}
-          value={plan.grade}
-          onChange={(e) =>
-            updateField("grade", e.target.value)
-          }
-        >
-          <option value="">
-            {isArabic ? "— اختر الصف —" : "— Select Grade —"}
-          </option>
-
-          <optgroup
-            label={isArabic ? "الابتدائي" : "Primary School"}
+        {/* Grade */}
+        <Field label={isArabic ? "الصف" : "Grade"}>
+          <select
+            className={inputCls}
+            value={plan.grade}
+            onChange={(e) => updateField("grade", e.target.value)}
           >
-            {GRADES_PRIMARY.map((g) => (
-              <option key={g} value={g}>
-                {gradeLabel(g)}
+            <option value="">{isArabic ? "— اختر الصف —" : "— Select Grade —"}</option>
+
+            <optgroup label={isArabic ? "الابتدائي" : "Primary School"}>
+              {GRADES_PRIMARY.map((g) => (
+                <option key={g} value={g}>
+                  {gradeLabel(g)}
+                </option>
+              ))}
+            </optgroup>
+
+            <optgroup label={isArabic ? "المتوسط" : "Middle School"}>
+              {GRADES_MIDDLE.map((g) => (
+                <option key={g} value={g}>
+                  {gradeLabel(g)}
+                </option>
+              ))}
+            </optgroup>
+
+            <optgroup label={isArabic ? "الثانوي" : "High School"}>
+              {GRADES_HIGH.map((g) => (
+                <option key={g} value={g}>
+                  {gradeLabel(g)}
+                </option>
+              ))}
+            </optgroup>
+          </select>
+        </Field>
+
+        {/* Lesson content language */}
+        <Field label={isArabic ? "لغة الدرس" : "Lesson Content Language"}>
+          <select
+            className={inputCls}
+            value={plan.contentLanguage ?? "ar"}
+            onChange={(e) => updateField("contentLanguage", e.target.value as ContentLanguage)}
+          >
+            {CONTENT_LANGUAGES.map((l) => (
+              <option key={l.value} value={l.value}>
+                {isArabic ? l.label : l.value === "ar" ? "Arabic" : "English"}
               </option>
             ))}
-          </optgroup>
+          </select>
 
-          <optgroup
-            label={isArabic ? "المتوسط" : "Middle School"}
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            {isArabic
+              ? "لغة المحتوى التعليمي المولَّد (الأسئلة، الأنشطة، أوراق العمل، الشرائح) — وهي مستقلة عن لغة واجهة الموقع."
+              : "The language used for generated educational content (questions, activities, worksheets, and slides). This is independent from the website interface language."}
+          </p>
+        </Field>
+      </div>
+
+      <div className="mt-3 space-y-4">
+        {/* =========================
+      موضوع الدرس
+  ========================= */}
+
+        <Field label={isArabic ? "موضوع الدرس" : "Lesson Topic"}>
+          <input
+            className={inputCls}
+            value={plan.topic}
+            onChange={(e) => updateField("topic", e.target.value)}
+            onBlur={onTopicBlur}
+            placeholder={
+              isArabic ? "مثال: الحرارة والانتقال الحراري" : "Example: Heat and Heat Transfer"
+            }
+          />
+        </Field>
+
+        {/* =========================
+      الفصل
+  ========================= */}
+
+        <Field label={isArabic ? "الفصل" : "Class"}>
+          <select
+            className={inputCls}
+            value={plan.classId ?? ""}
+            onChange={(e) => updateField("classId", e.target.value)}
           >
-            {GRADES_MIDDLE.map((g) => (
-              <option key={g} value={g}>
-                {gradeLabel(g)}
+            <option value="">{isArabic ? "اختر الفصل" : "Select Class"}</option>
+
+            {schoolClasses.map((schoolClass) => (
+              <option key={schoolClass.id} value={schoolClass.id}>
+                {isArabic ? schoolClass.name_ar : schoolClass.name_en || schoolClass.name_ar}
               </option>
             ))}
-          </optgroup>
+          </select>
+        </Field>
 
-          <optgroup
-            label={isArabic ? "الثانوي" : "High School"}
-          >
-            {GRADES_HIGH.map((g) => (
-              <option key={g} value={g}>
-                {gradeLabel(g)}
-              </option>
-            ))}
-          </optgroup>
-        </select>
-      </Field>
+        {/* =========================
+      التاريخ واليوم
+  ========================= */}
 
-      {/* Lesson content language */}
-      <Field
-        label={
-          isArabic
-            ? "لغة الدرس"
-            : "Lesson Content Language"
-        }
-      >
-        <select
-          className={inputCls}
-          value={plan.contentLanguage ?? "ar"}
-          onChange={(e) =>
-            updateField(
-              "contentLanguage",
-              e.target.value as ContentLanguage
-            )
-          }
-        >
-          {CONTENT_LANGUAGES.map((l) => (
-            <option key={l.value} value={l.value}>
-              {isArabic
-                ? l.label
-                : l.value === "ar"
-                  ? "Arabic"
-                  : "English"}
-            </option>
-          ))}
-        </select>
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label={isArabic ? "تاريخ الحصة" : "Lesson Date"}>
+            <input
+              type="date"
+              className={inputCls}
+              value={plan.scheduledDate ?? ""}
+              onChange={(e) => updateField("scheduledDate", e.target.value)}
+            />
+          </Field>
 
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          {isArabic
-            ? "لغة المحتوى التعليمي المولَّد (الأسئلة، الأنشطة، أوراق العمل، الشرائح) — وهي مستقلة عن لغة واجهة الموقع."
-            : "The language used for generated educational content (questions, activities, worksheets, and slides). This is independent from the website interface language."}
-        </p>
-      </Field>
+          <Field label={isArabic ? "اليوم" : "Day"}>
+            <input
+              className={inputCls}
+              value={plan.scheduledDate ? getDayName(plan.scheduledDate) : ""}
+              readOnly
+              placeholder={
+                isArabic ? "يظهر تلقائيًا بعد اختيار التاريخ" : "Automatically calculated from date"
+              }
+            />
+          </Field>
+        </div>
+
+        {autoFill}
+      </div>
+
+      {/* Learning outcomes */}
+      <div className="mt-3">
+        <Field label={isArabic ? "ماذا سأتعلم اليوم؟" : "What Will I Learn Today?"}>
+          <textarea
+            className={`${inputCls} min-h-[110px] resize-y overflow-hidden leading-relaxed`}
+            rows={Math.max(4, plan.objectives.split(/\r?\n/).length + 1)}
+            value={plan.objectives}
+            onChange={(e) => {
+              updateField("objectives", e.target.value);
+
+              updateField(
+                "outcomes",
+                e.target.value
+                  .split(/\r?\n/)
+                  .map((s) => s.trim())
+                  .filter(Boolean),
+              );
+            }}
+            placeholder={
+              isArabic
+                ? "أُعرّف ...\nأُميّز ...\nأُطبّق ...\nأستنتج ..."
+                : "I define ...\nI distinguish ...\nI apply ...\nI infer ..."
+            }
+          />
+
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {isArabic ? (
+              <>
+                اكتب كل ناتج بفعل مضارع مباشر بصيغة المتكلم — أُعرّف · أُميّز · أُطبّق · أستنتج ·
+                أربط · أحلّل · أُصمّم · أبني
+                <br />
+                مثال: أُميّز بين أنواع الصخور الثلاثة
+              </>
+            ) : (
+              <>
+                Write each learning outcome in the first person using a measurable action verb — I
+                define · I distinguish · I apply · I infer · I connect · I analyze · I design · I
+                build
+                <br />
+                Example: I distinguish between the three types of rocks.
+              </>
+            )}
+          </p>
+        </Field>
+      </div>
     </div>
-
-    {/* Topic */}
-    <div className="mt-3">
-      <Field
-        label={
-          isArabic
-            ? "موضوع الدرس"
-            : "Lesson Topic"
-        }
-      >
-        <input
-          className={inputCls}
-          value={plan.topic}
-          onChange={(e) =>
-            updateField("topic", e.target.value)
-          }
-          onBlur={onTopicBlur}
-          placeholder={
-            isArabic
-              ? "مثال: الحرارة والانتقال الحراري"
-              : "Example: Comparing and Ordering Numbers"
-          }
-        />
-      </Field>
-
-      {autoFill}
-    </div>
-
-    {/* Learning outcomes */}
-    <div className="mt-3">
-      <Field
-        label={
-          isArabic
-            ? "ماذا سأتعلم اليوم؟"
-            : "What Will I Learn Today?"
-        }
-      >
-        <textarea
-          className={`${inputCls} min-h-[110px] resize-y overflow-hidden leading-relaxed`}
-          rows={Math.max(
-            4,
-            plan.objectives.split(/\r?\n/).length + 1
-          )}
-          value={plan.objectives}
-          onChange={(e) => {
-            updateField(
-              "objectives",
-              e.target.value
-            );
-
-            updateField(
-              "outcomes",
-              e.target.value
-                .split(/\r?\n/)
-                .map((s) => s.trim())
-                .filter(Boolean)
-            );
-          }}
-          placeholder={
-            isArabic
-              ? "أُعرّف ...\nأُميّز ...\nأُطبّق ...\nأستنتج ..."
-              : "I define ...\nI distinguish ...\nI apply ...\nI infer ..."
-          }
-        />
-
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          {isArabic ? (
-            <>
-              اكتب كل ناتج بفعل مضارع مباشر بصيغة المتكلم —
-              أُعرّف · أُميّز · أُطبّق · أستنتج · أربط ·
-              أحلّل · أُصمّم · أبني
-              <br />
-              مثال: أُميّز بين أنواع الصخور الثلاثة
-            </>
-          ) : (
-            <>
-              Write each learning outcome in the first person
-              using a measurable action verb — I define · I
-              distinguish · I apply · I infer · I connect · I
-              analyze · I design · I build
-              <br />
-              Example: I distinguish between the three types of
-              rocks.
-            </>
-          )}
-        </p>
-      </Field>
-    </div>
-  </div>
-);
+  );
 }
 
 const SUBJECTS_SCIENCE = [
@@ -912,7 +880,13 @@ function PhaseCard({
   meta: PhaseMeta;
   data: PhaseData;
   onChange: (patch: Partial<PhaseData>) => void;
-  context: { subject: string; grade: string; topic: string; objectives: string; lang: ContentLanguage };
+  context: {
+    subject: string;
+    grade: string;
+    topic: string;
+    objectives: string;
+    lang: ContentLanguage;
+  };
 }) {
   const { language } = useUiLanguage();
   const isArabic = language === "ar";
@@ -921,7 +895,8 @@ function PhaseCard({
   const suggest = useServerFn(suggestActivity);
   const { text: curriculum } = useCurriculum();
 
-  const completed = data.teacherActivity.trim().length > 0 || data.studentActivity.trim().length > 0;
+  const completed =
+    data.teacherActivity.trim().length > 0 || data.studentActivity.trim().length > 0;
 
   const askAi = async () => {
     setLoading(true);
@@ -935,18 +910,18 @@ function PhaseCard({
           curriculum: curriculum || undefined,
         },
       });
- onChange({ aiSuggestion: text });
-} catch (e) {
-  toast.error(
-    reportAiError(
-      e,
-      isArabic ? "التخطيط الذكي" : "AI Planning",
-      isArabic ? "تعذّر الاتصال" : "Unable to connect"
-    )
-  );
-} finally {
-  setLoading(false);
-}
+      onChange({ aiSuggestion: text });
+    } catch (e) {
+      toast.error(
+        reportAiError(
+          e,
+          isArabic ? "التخطيط الذكي" : "AI Planning",
+          isArabic ? "تعذّر الاتصال" : "Unable to connect",
+        ),
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const useSuggestion = () => {
@@ -958,234 +933,210 @@ function PhaseCard({
       studentActivity: (studentMatch?.[1] ?? "").trim() || data.studentActivity,
     });
     toast.success(
-  isArabic
-    ? "✅ تمت تعبئة الخطة — راجع وعدّل ما يلزم"
-    : "✅ Plan generated — review and edit as needed"
-);
+      isArabic
+        ? "✅ تمت تعبئة الخطة — راجع وعدّل ما يلزم"
+        : "✅ Plan generated — review and edit as needed",
+    );
   };
 
-return (
-  <div
-    className="phase-card bg-card"
-    style={{
-      borderInlineStartWidth: 4,
-      borderInlineStartColor: meta.color,
-    }}
-  >
-    <button
-      type="button"
-      onClick={() => setOpen((o) => !o)}
-      className="flex w-full items-center gap-3.5 bg-card px-5 py-4 text-start transition-colors hover:bg-[#F7F9FC]"
+  return (
+    <div
+      className="phase-card bg-card"
+      style={{
+        borderInlineStartWidth: 4,
+        borderInlineStartColor: meta.color,
+      }}
     >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
-        style={{ background: meta.color }}
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-3.5 bg-card px-5 py-4 text-start transition-colors hover:bg-[#F7F9FC]"
       >
-        {completed ? "✓" : meta.nameEn[0]}
-      </span>
-
-      <div className="min-w-0 flex-1">
-        <span className="block text-[18px] font-bold leading-snug text-primary">
-          {isArabic ? meta.nameAr : meta.nameEn}
-        </span>
-
-        <span className="mt-px block text-[12px] font-medium text-[#8896A5]">
-          {isArabic ? meta.nameEn : meta.nameAr}
-        </span>
-      </div>
-
-      <span className="shrink-0 rounded-lg bg-[#FBF4E3] px-2.5 py-1 text-[15px] font-bold text-gold">
-        {data.duration} {isArabic ? "دق" : "min"}
-      </span>
-
-      <ChevronDown
-        className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${
-          open ? "rotate-180" : ""
-        }`}
-      />
-    </button>
-
-    {open && (
-      <div className="border-t bg-[#F7F9FC] p-5">
-        <div
-          className="mb-4 rounded-[10px] border bg-card px-3.5 py-2.5 text-[14px] leading-[1.7] text-[#4A5568]"
-          style={{
-            borderInlineStartWidth: 3,
-            borderInlineStartColor: "var(--gold)",
-          }}
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
+          style={{ background: meta.color }}
         >
-          <span className="font-bold text-gold">💡 </span>
+          {completed ? "✓" : meta.nameEn[0]}
+        </span>
 
-          {isArabic
-            ? meta.teacherHint
-            : `Plan this ${meta.nameEn} phase around the lesson objective and encourage active student participation.`}
+        <div className="min-w-0 flex-1">
+          <span className="block text-[18px] font-bold leading-snug text-primary">
+            {isArabic ? meta.nameAr : meta.nameEn}
+          </span>
+
+          <span className="mt-px block text-[12px] font-medium text-[#8896A5]">
+            {isArabic ? meta.nameEn : meta.nameAr}
+          </span>
         </div>
 
-        <div className="mb-3">
-          <div className="mb-1 flex items-center justify-between text-sm">
-            <label className="font-medium">
-              ⏱ {isArabic ? "الوقت" : "Time"}
-            </label>
+        <span className="shrink-0 rounded-lg bg-[#FBF4E3] px-2.5 py-1 text-[15px] font-bold text-gold">
+          {data.duration} {isArabic ? "دق" : "min"}
+        </span>
 
-            <span className="font-bold text-primary">
-              {data.duration} {isArabic ? "دق" : "min"}
-            </span>
+        <ChevronDown
+          className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
+      </button>
+
+      {open && (
+        <div className="border-t bg-[#F7F9FC] p-5">
+          <div
+            className="mb-4 rounded-[10px] border bg-card px-3.5 py-2.5 text-[14px] leading-[1.7] text-[#4A5568]"
+            style={{
+              borderInlineStartWidth: 3,
+              borderInlineStartColor: "var(--gold)",
+            }}
+          >
+            <span className="font-bold text-gold">💡 </span>
+
+            {isArabic
+              ? meta.teacherHint
+              : `Plan this ${meta.nameEn} phase around the lesson objective and encourage active student participation.`}
           </div>
 
-          <input
-            type="range"
-            min={2}
-            max={25}
-            value={data.duration}
-            onChange={(e) =>
-              onChange({
-                duration: Number(e.target.value),
-              })
-            }
-            className="w-full accent-[var(--gold)]"
-          />
-        </div>
+          <div className="mb-3">
+            <div className="mb-1 flex items-center justify-between text-sm">
+              <label className="font-medium">⏱ {isArabic ? "الوقت" : "Time"}</label>
 
-        <Field
-          label={
-            isArabic
-              ? "نشاط المرحلة (توجيه المعلم)"
-              : "Phase Activity (Teacher Guidance)"
-          }
-        >
-          <textarea
-            className={`${inputCls} min-h-[80px]`}
-            value={data.teacherActivity}
-            onChange={(e) =>
-              onChange({
-                teacherActivity: e.target.value,
-              })
-            }
-            placeholder={
-              isArabic
-                ? meta.placeholder
-                : `Describe the teacher's role during the ${meta.nameEn} phase...`
-            }
-          />
-        </Field>
+              <span className="font-bold text-primary">
+                {data.duration} {isArabic ? "دق" : "min"}
+              </span>
+            </div>
 
-        <div className="mt-3">
+            <input
+              type="range"
+              min={2}
+              max={25}
+              value={data.duration}
+              onChange={(e) =>
+                onChange({
+                  duration: Number(e.target.value),
+                })
+              }
+              className="w-full accent-[var(--gold)]"
+            />
+          </div>
+
           <Field
-            label={
-              isArabic
-                ? "أسئلة المعلم"
-                : "Teacher Questions"
-            }
+            label={isArabic ? "نشاط المرحلة (توجيه المعلم)" : "Phase Activity (Teacher Guidance)"}
           >
             <textarea
               className={`${inputCls} min-h-[80px]`}
-              value={data.teacherQuestions ?? ""}
+              value={data.teacherActivity}
               onChange={(e) =>
                 onChange({
-                  teacherQuestions: e.target.value,
+                  teacherActivity: e.target.value,
                 })
               }
               placeholder={
                 isArabic
-                  ? meta.questionsPlaceholder
-                  : `Write guiding questions for the ${meta.nameEn} phase...`
+                  ? meta.placeholder
+                  : `Describe the teacher's role during the ${meta.nameEn} phase...`
               }
             />
           </Field>
 
-          <ReadyQuestions
-            phase={meta.id}
-            topic={context.topic}
-            onPick={(q) => {
-              const cur = (
-                data.teacherQuestions ?? ""
-              ).trimEnd();
+          <div className="mt-3">
+            <Field label={isArabic ? "أسئلة المعلم" : "Teacher Questions"}>
+              <textarea
+                className={`${inputCls} min-h-[80px]`}
+                value={data.teacherQuestions ?? ""}
+                onChange={(e) =>
+                  onChange({
+                    teacherQuestions: e.target.value,
+                  })
+                }
+                placeholder={
+                  isArabic
+                    ? meta.questionsPlaceholder
+                    : `Write guiding questions for the ${meta.nameEn} phase...`
+                }
+              />
+            </Field>
 
-              onChange({
-                teacherQuestions: cur
-                  ? `${cur}\n• ${q}`
-                  : `• ${q}`,
-              });
-            }}
+            <ReadyQuestions
+              phase={meta.id}
+              topic={context.topic}
+              onPick={(q) => {
+                const cur = (data.teacherQuestions ?? "").trimEnd();
+
+                onChange({
+                  teacherQuestions: cur ? `${cur}\n• ${q}` : `• ${q}`,
+                });
+              }}
+            />
+          </div>
+
+          <div className="mt-3">
+            <Field
+              label={
+                isArabic
+                  ? "النشاط بصياغة الطالب (يظهر في شاشة الطالب)"
+                  : "Student Activity (Shown on Student Screen)"
+              }
+            >
+              <textarea
+                className={`${inputCls} min-h-[70px]`}
+                value={data.studentActivity}
+                onChange={(e) =>
+                  onChange({
+                    studentActivity: e.target.value,
+                  })
+                }
+                placeholder={
+                  isArabic
+                    ? meta.studentPlaceholder
+                    : `Write the activity from the student's point of view...`
+                }
+              />
+            </Field>
+          </div>
+
+          <button
+            onClick={askAi}
+            disabled={loading}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/20 disabled:opacity-60"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {isArabic ? "جارٍ التفكير..." : "Thinking..."}
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-4 w-4" />
+                {isArabic ? "اقترح نشاطاً بالذكاء الاصطناعي" : "Suggest an AI Activity"}
+              </>
+            )}
+          </button>
+
+          {data.aiSuggestion && (
+            <div className="mt-3 whitespace-pre-wrap rounded-lg border border-gold/30 bg-gold/5 p-4 text-sm leading-relaxed">
+              {data.aiSuggestion}
+
+              <div className="mt-3">
+                <button
+                  onClick={useSuggestion}
+                  className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+                >
+                  {isArabic ? "استخدم هذا الاقتراح" : "Use This Suggestion"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <PhaseImagePicker
+            images={data.images ?? []}
+            onChange={(images: PhaseImage[]) => onChange({ images })}
+            topic={context.topic}
+            subject={context.subject}
           />
         </div>
-
-        <div className="mt-3">
-          <Field
-            label={
-              isArabic
-                ? "النشاط بصياغة الطالب (يظهر في شاشة الطالب)"
-                : "Student Activity (Shown on Student Screen)"
-            }
-          >
-            <textarea
-              className={`${inputCls} min-h-[70px]`}
-              value={data.studentActivity}
-              onChange={(e) =>
-                onChange({
-                  studentActivity: e.target.value,
-                })
-              }
-              placeholder={
-                isArabic
-                  ? meta.studentPlaceholder
-                  : `Write the activity from the student's point of view...`
-              }
-            />
-          </Field>
-        </div>
-
-        <button
-          onClick={askAi}
-          disabled={loading}
-          className="mt-3 inline-flex items-center gap-2 rounded-lg border border-gold/40 bg-gold/10 px-4 py-2 text-sm font-medium text-gold transition-colors hover:bg-gold/20 disabled:opacity-60"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              {isArabic
-                ? "جارٍ التفكير..."
-                : "Thinking..."}
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-4 w-4" />
-              {isArabic
-                ? "اقترح نشاطاً بالذكاء الاصطناعي"
-                : "Suggest an AI Activity"}
-            </>
-          )}
-        </button>
-
-        {data.aiSuggestion && (
-          <div className="mt-3 whitespace-pre-wrap rounded-lg border border-gold/30 bg-gold/5 p-4 text-sm leading-relaxed">
-            {data.aiSuggestion}
-
-            <div className="mt-3">
-              <button
-                onClick={useSuggestion}
-                className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
-              >
-                {isArabic
-                  ? "استخدم هذا الاقتراح"
-                  : "Use This Suggestion"}
-              </button>
-            </div>
-          </div>
-        )}
-
-        <PhaseImagePicker
-          images={data.images ?? []}
-          onChange={(images: PhaseImage[]) =>
-            onChange({ images })
-          }
-          topic={context.topic}
-          subject={context.subject}
-        />
-      </div>
-    )}
-  </div>
-);
+      )}
+    </div>
+  );
 }
 
 /* ---------------- Ready-made questions ---------------- */
@@ -1203,17 +1154,11 @@ function ReadyQuestions({
 
   const [open, setOpen] = useState(false);
 
-  const subject =
-    topic.trim() ||
-    (isArabic ? "الموضوع" : "the topic");
+  const subject = topic.trim() || (isArabic ? "الموضوع" : "the topic");
 
-const questionBank = isArabic
-  ? QUESTION_BANKS
-  : QUESTION_BANKS_EN;
+  const questionBank = isArabic ? QUESTION_BANKS : QUESTION_BANKS_EN;
 
-  const list = questionBank[phase].map((q) =>
-    q.replace(/\{topic\}/g, subject)
-  );
+  const list = questionBank[phase].map((q) => q.replace(/\{topic\}/g, subject));
 
   return (
     <div className="relative mt-2">
@@ -1223,12 +1168,7 @@ const questionBank = isArabic
         className="inline-flex items-center gap-1.5 rounded-lg border border-gold/40 bg-gold/10 px-3 py-1.5 text-[13px] font-semibold text-gold hover:bg-gold/20"
       >
         💡 {isArabic ? "أسئلة جاهزة" : "Ready-Made Questions"}
-
-        <ChevronDown
-          className={`h-3.5 w-3.5 transition-transform ${
-            open ? "rotate-180" : ""
-          }`}
-        />
+        <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
 
       {open && (
@@ -1253,7 +1193,6 @@ const questionBank = isArabic
 }
 
 /* ---------------- الصور التوضيحية: انظر PhaseImagePicker ---------------- */
-
 
 /* ---------------- Homework card ---------------- */
 function HomeworkCard({
@@ -1295,8 +1234,8 @@ function HomeworkCard({
         reportAiError(
           e,
           isArabic ? "التخطيط الذكي" : "AI Planning",
-          isArabic ? "تعذّر الاتصال" : "Unable to connect"
-        )
+          isArabic ? "تعذّر الاتصال" : "Unable to connect",
+        ),
       );
     } finally {
       setLoading(false);
@@ -1307,34 +1246,22 @@ function HomeworkCard({
     const text = homework.aiSuggestion ?? "";
 
     const teacherMatch = isArabic
-      ? text.match(
-          /\*\*توجيه المعلم:\*\*([\s\S]*?)(?=\*\*للطالب|$)/
-        )
+      ? text.match(/\*\*توجيه المعلم:\*\*([\s\S]*?)(?=\*\*للطالب|$)/)
       : text.match(
-          /\*\*(?:Teacher Guidance|For the Teacher|Teacher):\*\*([\s\S]*?)(?=\*\*(?:For the Student|Student)|$)/i
+          /\*\*(?:Teacher Guidance|For the Teacher|Teacher):\*\*([\s\S]*?)(?=\*\*(?:For the Student|Student)|$)/i,
         );
 
     const studentMatch = isArabic
       ? text.match(/\*\*للطالب:\*\*([\s\S]*)/)
-      : text.match(
-          /\*\*(?:For the Student|Student):\*\*([\s\S]*)/i
-        );
+      : text.match(/\*\*(?:For the Student|Student):\*\*([\s\S]*)/i);
 
     update({
-      teacherNote:
-        (teacherMatch?.[1] ?? "").trim() ||
-        homework.teacherNote,
+      teacherNote: (teacherMatch?.[1] ?? "").trim() || homework.teacherNote,
 
-      studentText:
-        (studentMatch?.[1] ?? "").trim() ||
-        homework.studentText,
+      studentText: (studentMatch?.[1] ?? "").trim() || homework.studentText,
     });
 
-    toast.success(
-      isArabic
-        ? "تم تعبئة الواجب"
-        : "Homework fields filled successfully"
-    );
+    toast.success(isArabic ? "تم تعبئة الواجب" : "Homework fields filled successfully");
   };
 
   return (
@@ -1363,13 +1290,7 @@ function HomeworkCard({
         </p>
       </div>
 
-      <Field
-        label={
-          isArabic
-            ? "توجيه المعلم"
-            : "Teacher Guidance"
-        }
-      >
+      <Field label={isArabic ? "توجيه المعلم" : "Teacher Guidance"}>
         <textarea
           className={`${inputCls} min-h-[70px]`}
           value={homework.teacherNote}
@@ -1403,9 +1324,7 @@ function HomeworkCard({
               })
             }
             placeholder={
-              isArabic
-                ? "تحدّيك خارج الفصل: ..."
-                : "Your challenge outside the classroom: ..."
+              isArabic ? "تحدّيك خارج الفصل: ..." : "Your challenge outside the classroom: ..."
             }
           />
         </Field>
@@ -1420,17 +1339,13 @@ function HomeworkCard({
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
 
-            {isArabic
-              ? "جارٍ التفكير..."
-              : "Thinking..."}
+            {isArabic ? "جارٍ التفكير..." : "Thinking..."}
           </>
         ) : (
           <>
             <Sparkles className="h-4 w-4" />
 
-            {isArabic
-              ? "اقترح واجباً ذكياً"
-              : "Suggest AI Homework"}
+            {isArabic ? "اقترح واجباً ذكياً" : "Suggest AI Homework"}
           </>
         )}
       </button>
@@ -1444,9 +1359,7 @@ function HomeworkCard({
               onClick={useSuggestion}
               className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
             >
-              {isArabic
-                ? "استخدم هذا الواجب"
-                : "Use This Homework"}
+              {isArabic ? "استخدم هذا الواجب" : "Use This Homework"}
             </button>
           </div>
         </div>
@@ -1454,7 +1367,6 @@ function HomeworkCard({
     </div>
   );
 }
-
 
 const inputCls =
   "w-full rounded-[10px] border-[1.5px] border-[#CBD5E0] bg-card px-3.5 py-2.5 text-[16px] leading-[1.7] outline-none transition-colors focus:border-primary focus:ring-[3px] focus:ring-primary/10";
@@ -1473,4 +1385,3 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     </label>
   );
 }
-

@@ -25,6 +25,7 @@ import { Route as SupervisorRouteImport } from './routes/supervisor'
 import { Route as WorksheetRouteImport } from './routes/worksheet'
 import { Route as Char91DotmcpChar93ListToolsRouteImport } from './routes/[.mcp]/list-tools'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as AttendanceLessonIdRouteImport } from './routes/attendance.$lessonId'
 import { Route as AuthIndexRouteImport } from './routes/auth/index'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as Char91DotmcpChar93InvokeToolToolRouteImport } from './routes/[.mcp]/invoke-tool/$tool'
@@ -112,6 +113,11 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const AttendanceLessonIdRoute = AttendanceLessonIdRouteImport.update({
+  id: '/attendance/$lessonId',
+  path: '/attendance/$lessonId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthIndexRoute = AuthIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/worksheet': typeof WorksheetRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/attendance/$lessonId': typeof AttendanceLessonIdRoute
   '/auth/': typeof AuthIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -172,6 +179,7 @@ export interface FileRoutesByTo {
   '/worksheet': typeof WorksheetRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/attendance/$lessonId': typeof AttendanceLessonIdRoute
   '/auth': typeof AuthIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -195,6 +203,7 @@ export interface FileRoutesById {
   '/worksheet': typeof WorksheetRoute
   '/.mcp/list-tools': typeof Char91DotmcpChar93ListToolsRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/attendance/$lessonId': typeof AttendanceLessonIdRoute
   '/auth/': typeof AuthIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/.mcp/invoke-tool/$tool': typeof Char91DotmcpChar93InvokeToolToolRoute
@@ -219,6 +228,7 @@ export interface FileRouteTypes {
     | '/worksheet'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/attendance/$lessonId'
     | '/auth/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/worksheet'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/attendance/$lessonId'
     | '/auth'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -262,6 +273,7 @@ export interface FileRouteTypes {
     | '/worksheet'
     | '/.mcp/list-tools'
     | '/.well-known/oauth-protected-resource'
+    | '/attendance/$lessonId'
     | '/auth/'
     | '/.lovable/oauth/consent'
     | '/.mcp/invoke-tool/$tool'
@@ -285,6 +297,7 @@ export interface RootRouteChildren {
   WorksheetRoute: typeof WorksheetRoute
   Char91DotmcpChar93ListToolsRoute: typeof Char91DotmcpChar93ListToolsRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  AttendanceLessonIdRoute: typeof AttendanceLessonIdRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   Char91DotmcpChar93InvokeToolToolRoute: typeof Char91DotmcpChar93InvokeToolToolRoute
   ApiPublicHealthRoute: typeof ApiPublicHealthRoute
@@ -404,6 +417,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/attendance/$lessonId': {
+      id: '/attendance/$lessonId'
+      path: '/attendance/$lessonId'
+      fullPath: '/attendance/$lessonId'
+      preLoaderRoute: typeof AttendanceLessonIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/auth/': {
       id: '/auth/'
       path: '/'
@@ -463,6 +483,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotmcpChar93ListToolsRoute: Char91DotmcpChar93ListToolsRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
+  AttendanceLessonIdRoute: AttendanceLessonIdRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   Char91DotmcpChar93InvokeToolToolRoute: Char91DotmcpChar93InvokeToolToolRoute,
   ApiPublicHealthRoute: ApiPublicHealthRoute,

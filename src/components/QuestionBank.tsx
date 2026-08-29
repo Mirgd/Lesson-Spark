@@ -7,13 +7,7 @@ import { useSharedFile } from "@/lib/pdf-images";
 
 const TEAL = "#1E7CA8";
 
-function Rating({
-  value,
-  onChange,
-}: {
-  value: number;
-  onChange: (v: number) => void;
-}) {
+function Rating({ value, onChange }: { value: number; onChange: (v: number) => void }) {
   const label = RATING_SCALE.find((r) => r.value === value);
   return (
     <div className="flex items-center gap-1">

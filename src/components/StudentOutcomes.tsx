@@ -9,13 +9,7 @@ export function planOutcomes(plan: LessonPlan): string[] {
     .filter(Boolean);
 }
 
-export function StudentOutcomes({
-  plan,
-  size = "md",
-}: {
-  plan: LessonPlan;
-  size?: "sm" | "md";
-}) {
+export function StudentOutcomes({ plan, size = "md" }: { plan: LessonPlan; size?: "sm" | "md" }) {
   const [checkMode, setCheckMode] = useState(false);
   const [checked, setChecked] = useState<Record<number, boolean>>({});
   const items = planOutcomes(plan);

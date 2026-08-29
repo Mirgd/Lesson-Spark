@@ -39,9 +39,7 @@ function normalizePageResult(parsed: Record<string, unknown>, pageNumber: number
     reasonAr: String(parsed.reasonAr ?? ""),
     slideTitle: String(parsed.slideTitle ?? `صفحة ${pageNumber}`),
     keyPoints: Array.isArray(parsed.keyPoints)
-      ? parsed.keyPoints
-          .filter((p): p is string => typeof p === "string")
-          .slice(0, 5)
+      ? parsed.keyPoints.filter((p): p is string => typeof p === "string").slice(0, 5)
       : [],
     studentQuestion: String(parsed.studentQuestion ?? ""),
     hasActivity: Boolean(parsed.hasActivity),
@@ -310,9 +308,7 @@ ${langInstruction(data.lang)}`;
 
     try {
       const parsed = JSON.parse(
-        start >= 0 && end > start
-          ? clean.slice(start, end + 1)
-          : clean,
+        start >= 0 && end > start ? clean.slice(start, end + 1) : clean,
       ) as {
         keywords?: unknown;
       };
@@ -323,11 +319,7 @@ ${langInstruction(data.lang)}`;
         keywords = parsed.keywords.trim();
       } else if (Array.isArray(parsed.keywords)) {
         keywords = parsed.keywords
-          .filter(
-            (item): item is string =>
-              typeof item === "string" &&
-              item.trim().length > 0,
-          )
+          .filter((item): item is string => typeof item === "string" && item.trim().length > 0)
           .join(" ");
       }
 
@@ -335,10 +327,7 @@ ${langInstruction(data.lang)}`;
         keywords,
       };
     } catch (e) {
-      if (
-        e instanceof Error &&
-        e.message.includes("AI_ERR::")
-      ) {
+      if (e instanceof Error && e.message.includes("AI_ERR::")) {
         throw e;
       }
 
@@ -348,7 +337,7 @@ ${langInstruction(data.lang)}`;
     }
   });
 
-  const PresentationInput = z.object({
+const PresentationInput = z.object({
   text: z.string(),
   pageCount: z.number(),
   topic: z.string(),
@@ -417,17 +406,13 @@ ${langInstruction(data.lang)}`;
 
     try {
       const parsed = JSON.parse(
-        start >= 0 && end > start
-          ? clean.slice(start, end + 1)
-          : clean,
+        start >= 0 && end > start ? clean.slice(start, end + 1) : clean,
       ) as Record<string, unknown>[];
 
       return parsed.map((item, index) => {
         const rawPage = Number(item.pageNumber);
         const pageNumber =
-          Number.isInteger(rawPage) &&
-          rawPage >= 1 &&
-          rawPage <= data.pageCount
+          Number.isInteger(rawPage) && rawPage >= 1 && rawPage <= data.pageCount
             ? rawPage
             : Math.min(index + 1, data.pageCount);
 
@@ -447,29 +432,17 @@ ${langInstruction(data.lang)}`;
           pageContent: String(item.pageContent ?? ""),
           bestPhase: validPhase,
           reasonAr: String(item.reasonAr ?? ""),
-          slideTitle: String(
-            item.slideTitle ?? `صفحة ${pageNumber}`
-          ),
+          slideTitle: String(item.slideTitle ?? `صفحة ${pageNumber}`),
           keyPoints: Array.isArray(item.keyPoints)
-            ? item.keyPoints
-                .filter(
-                  (p): p is string =>
-                    typeof p === "string"
-                )
-                .slice(0, 5)
+            ? item.keyPoints.filter((p): p is string => typeof p === "string").slice(0, 5)
             : [],
-          studentQuestion: String(
-            item.studentQuestion ?? ""
-          ),
+          studentQuestion: String(item.studentQuestion ?? ""),
           hasActivity: Boolean(item.hasActivity),
           hasDiagram: Boolean(item.hasDiagram),
         };
       });
     } catch (e) {
-      if (
-        e instanceof Error &&
-        e.message.includes("AI_ERR::")
-      ) {
+      if (e instanceof Error && e.message.includes("AI_ERR::")) {
         throw e;
       }
 

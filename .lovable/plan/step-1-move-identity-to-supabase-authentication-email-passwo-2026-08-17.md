@@ -15,17 +15,21 @@ Only authentication changes. No schema changes, no RLS changes, no data deleted,
 ## Files
 
 New:
+
 - `src/lib/session.ts` — `useSession()` hook: current Supabase user + `profiles` row + `user_roles` role, kept fresh via `onAuthStateChange`; plus `signOut()` helper. This replaces `useTeacher()` as the identity source.
 
 Rewritten:
+
 - `src/routes/auth/index.tsx` — sign in / sign up form (email, password, full name on sign-up), Arabic error messages, redirect by role after success.
 - `src/components/SupervisorOnly.tsx` — gate on the role from `user_roles` instead of the local identity role.
 
 Updated to read identity from `useSession()`:
+
 - `src/routes/__root.tsx` — auth gate redirects unauthenticated users to `/auth`; header shows the signed-in name with a sign-out button; supervision/admin links shown by real role.
 - `src/routes/planning.tsx`, `src/routes/dashboard.tsx`, `src/routes/supervisor.tsx`, `src/components/PlanAutoSave.tsx`, `src/components/PlanReview.tsx` — use the profile name/role instead of `useTeacher()` / `getTeacher()`.
 
 Kept:
+
 - `src/lib/teacher.ts` stays on disk (still used by `/admin`'s teacher directory listing) but is no longer used for authentication or authorization.
 
 ## Notes / decisions to confirm

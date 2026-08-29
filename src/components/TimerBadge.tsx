@@ -1,17 +1,10 @@
 import { fmtTime, type ExecTimerState } from "@/lib/exec-timer";
 
 /** Compact ring timer used as an overlay on top of the slide screen. */
-export function TimerBadge({
-  state,
-  size = 120,
-}: {
-  state: ExecTimerState;
-  size?: number;
-}) {
+export function TimerBadge({ state, size = 120 }: { state: ExecTimerState; size?: number }) {
   const r = size / 2 - 8;
   const c = 2 * Math.PI * r;
-  const pct =
-    state.durationSec > 0 ? 1 - state.secondsLeft / state.durationSec : 0;
+  const pct = state.durationSec > 0 ? 1 - state.secondsLeft / state.durationSec : 0;
   const warning = state.secondsLeft > 0 && state.secondsLeft <= 120;
 
   return (

@@ -39,15 +39,9 @@ export interface LessonInfo {
   objectives: string[];
 }
 
-type Content =
-  | { type: "text"; text: string }
-  | { type: "image_url"; image_url: { url: string } };
+type Content = { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } };
 
-async function callGateway(
-  content: string | Content[],
-  maxTokens: number,
-  label?: string
-) {
+async function callGateway(content: string | Content[], maxTokens: number, label?: string) {
   return callAiGateway({
     messages: [{ role: "user", content }],
     maxTokens,
@@ -67,7 +61,6 @@ function parseJson<T>(raw: string): T {
     return JSON.parse(repairJson(start >= 0 ? clean.slice(start) : clean)) as T;
   }
 }
-
 
 const strArr = (v: unknown): string[] =>
   Array.isArray(v) ? v.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
@@ -240,17 +233,13 @@ ${langInstruction(data.lang)}`;
       if (e instanceof Error && e.message.includes("AI_ERR::")) throw e;
       failParse(raw);
     }
-
   });
 export const generateCompleteLesson = createServerFn({
   method: "POST",
 })
-  .inputValidator((data: unknown) =>
-    CompleteLessonInput.parse(data)
-  )
-  .handler(
-    async ({ data }): Promise<CompleteLessonResult> => {
-      const instruction = `
+  .inputValidator((data: unknown) => CompleteLessonInput.parse(data))
+  .handler(async ({ data }): Promise<CompleteLessonResult> => {
+    const instruction = `
 أنت خبير تربوي متخصص في تحليل المناهج وتصميم دروس STEM وفق نموذج 5E والنظرية البنائية.
 
 حلّل محتوى المقرر التالي وأنشئ جميع بيانات الدرس في استجابة واحدة فقط.
@@ -357,76 +346,65 @@ ${data.text.slice(0, 8000)}
 ${langInstruction(data.lang)}
 `;
 
-      const content: Content[] = [];
+    const content: Content[] = [];
 
-      if (data.firstPageImage) {
-        content.push({
-          type: "image_url",
-          image_url: {
-            url: `data:image/jpeg;base64,${data.firstPageImage}`,
-          },
-        });
-      }
-
+    if (data.firstPageImage) {
       content.push({
-        type: "text",
-        text: instruction,
+        type: "image_url",
+        image_url: {
+          url: `data:image/jpeg;base64,${data.firstPageImage}`,
+        },
       });
-
-const raw = await callGateway(
-  content,
-  7000,
-  "complete-lesson"
-);
-      const pick = (v: unknown) => {
-        const o = (v ?? {}) as Record<string, unknown>;
-
-        return {
-          teacher: str(o.teacher),
-          student: str(o.student),
-        };
-      };
-
-      try {
-        const p =
-          parseJson<Record<string, unknown>>(raw);
-
-        return {
-          topic: str(p.topic),
-          subject: str(p.subject),
-          grade: str(p.grade),
-          unitTitle: str(p.unitTitle),
-
-          outcomes: strArr(p.outcomes),
-          keywords: strArr(p.keywords),
-          mainConcepts: strArr(p.mainConcepts),
-
-          priorKnowledge: str(p.priorKnowledge),
-          realWorldContext: str(
-            p.realWorldContext
-          ),
-
-          objectives: strArr(p.objectives),
-
-          engage: pick(p.engage),
-          explore: pick(p.explore),
-          explain: pick(p.explain),
-          elaborate: pick(p.elaborate),
-          evaluate: pick(p.evaluate),
-          homework: pick(p.homework),
-        };
-      } catch (e) {
-        if (
-          e instanceof Error &&
-          e.message.includes("AI_ERR::")
-        ) {
-          throw e;
-        }
-
-        failParse(raw);
-      }
     }
-  );
+
+    content.push({
+      type: "text",
+      text: instruction,
+    });
+
+    const raw = await callGateway(content, 7000, "complete-lesson");
+    const pick = (v: unknown) => {
+      const o = (v ?? {}) as Record<string, unknown>;
+
+      return {
+        teacher: str(o.teacher),
+        student: str(o.student),
+      };
+    };
+
+    try {
+      const p = parseJson<Record<string, unknown>>(raw);
+
+      return {
+        topic: str(p.topic),
+        subject: str(p.subject),
+        grade: str(p.grade),
+        unitTitle: str(p.unitTitle),
+
+        outcomes: strArr(p.outcomes),
+        keywords: strArr(p.keywords),
+        mainConcepts: strArr(p.mainConcepts),
+
+        priorKnowledge: str(p.priorKnowledge),
+        realWorldContext: str(p.realWorldContext),
+
+        objectives: strArr(p.objectives),
+
+        engage: pick(p.engage),
+        explore: pick(p.explore),
+        explain: pick(p.explain),
+        elaborate: pick(p.elaborate),
+        evaluate: pick(p.evaluate),
+        homework: pick(p.homework),
+      };
+    } catch (e) {
+      if (e instanceof Error && e.message.includes("AI_ERR::")) {
+        throw e;
+      }
+
+      failParse(raw);
+    }
+  });
 /** قراءة بصرية للملفات المصوّرة: استخراج نص من صور الصفحات */
 export const readTextFromImages = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) => z.object({ images: z.array(z.string()).max(3) }).parse(data))
@@ -440,10 +418,6 @@ export const readTextFromImages = createServerFn({ method: "POST" })
       type: "text",
       text: "هذه صفحات من كتاب مدرسي مصوّر. اكتب كل النص الظاهر فيها كما هو بالعربية، بدون أي تعليق أو تنسيق إضافي.",
     });
-const raw = await callGateway(
-  content,
-  5000,
-  "pdf-ocr"
-);
+    const raw = await callGateway(content, 5000, "pdf-ocr");
     return { text: raw };
   });

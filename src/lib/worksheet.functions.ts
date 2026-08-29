@@ -61,9 +61,7 @@ ${slidesText}${reuseText}
 
 ${langInstruction(data.lang)}`;
 
-    const clean = (
-      await callAiGateway({ messages: [{ role: "user", content: instruction }] })
-    )
+    const clean = (await callAiGateway({ messages: [{ role: "user", content: instruction }] }))
       .replace(/```json|```/g, "")
       .trim();
     const start = clean.indexOf("{");
@@ -122,9 +120,7 @@ ${langInstruction(data.lang)}`;
     // Guarantee every reused bank question lands on a slide of its phase.
     const usedReuse = new Set<string>();
     for (const r of data.reuse) {
-      const target = items.find(
-        (it) => it.phase === r.phase && !usedReuse.has(`${it.slideIndex}`),
-      );
+      const target = items.find((it) => it.phase === r.phase && !usedReuse.has(`${it.slideIndex}`));
       if (!target) continue;
       usedReuse.add(`${target.slideIndex}`);
       if (!target.questions.some((q) => q.trim() === r.text.trim())) {

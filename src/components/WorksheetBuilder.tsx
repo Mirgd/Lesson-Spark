@@ -45,7 +45,7 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
       toast.error(
         isArabic
           ? "أنشئ العرض أولاً — ورقة العمل مرتبطة بالشرائح."
-          : "Create the presentation first — the worksheet is linked to the slides."
+          : "Create the presentation first — the worksheet is linked to the slides.",
       );
       return;
     }
@@ -82,67 +82,45 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
 
       setItems(res.items);
 
-      markUsed(
-        reuseSource.map((q) => q.id)
-      );
+      markUsed(reuseSource.map((q) => q.id));
 
       // حفظ الأسئلة الناتجة في بنك الأسئلة للاستخدام لاحقاً
       const added = addMany(
         res.items.flatMap((it) =>
-          it.questions
-            .filter(Boolean)
-            .map((q, qi) => ({
-              phase: it.phase,
-              subject: plan.subject,
-              topic: plan.topic,
-              text: q,
-              answer:
-                it.answers?.[qi] ?? "",
-            }))
-        )
+          it.questions.filter(Boolean).map((q, qi) => ({
+            phase: it.phase,
+            subject: plan.subject,
+            topic: plan.topic,
+            text: q,
+            answer: it.answers?.[qi] ?? "",
+          })),
+        ),
       );
 
       toast.success(
         isArabic
           ? `تم توليد ورقة العمل — ${res.items.length} أنشطة${
-              added
-                ? ` · أُضيف ${added} سؤالاً للبنك`
-                : ""
+              added ? ` · أُضيف ${added} سؤالاً للبنك` : ""
             }`
           : `Worksheet generated — ${res.items.length} activities${
-              added
-                ? ` · ${added} questions added to the question bank`
-                : ""
-            }`
+              added ? ` · ${added} questions added to the question bank` : ""
+            }`,
       );
     } catch (e) {
       toast.error(
         reportAiError(
           e,
-          isArabic
-            ? "توليد ورقة العمل"
-            : "Worksheet Generator",
-          isArabic
-            ? "فشل توليد ورقة العمل"
-            : "Failed to generate the worksheet"
-        )
+          isArabic ? "توليد ورقة العمل" : "Worksheet Generator",
+          isArabic ? "فشل توليد ورقة العمل" : "Failed to generate the worksheet",
+        ),
       );
     } finally {
       setBusy(false);
     }
   };
 
-  const patch = (
-    i: number,
-    p: Partial<(typeof items)[number]>
-  ) =>
-    setItems(
-      items.map((it, idx) =>
-        idx === i
-          ? { ...it, ...p }
-          : it
-      )
-    );
+  const patch = (i: number, p: Partial<(typeof items)[number]>) =>
+    setItems(items.map((it, idx) => (idx === i ? { ...it, ...p } : it)));
 
   return (
     <div className="card-elevated p-4">
@@ -155,11 +133,7 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
         className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
         style={{ background: TEAL }}
       >
-        {busy ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <FileText className="h-4 w-4" />
-        )}
+        {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
 
         {busy
           ? isArabic
@@ -186,33 +160,22 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
 
           <ul className="space-y-2">
             {items.map((it, i) => (
-              <li
-                key={`${it.slideIndex}-${i}`}
-                className="rounded-lg border bg-card p-2"
-              >
+              <li key={`${it.slideIndex}-${i}`} className="rounded-lg border bg-card p-2">
                 <div className="mb-1 flex items-center gap-2">
                   <span
                     className="rounded px-2 py-0.5 text-[11px] font-bold text-white"
                     style={{
                       background:
-                        PHASE_LABELS[
-                          it.phase as keyof typeof PHASE_LABELS
-                        ]?.color ?? "#888",
+                        PHASE_LABELS[it.phase as keyof typeof PHASE_LABELS]?.color ?? "#888",
                     }}
                   >
-                    {phaseName(
-                      it.phase as keyof typeof PHASE_LABELS
-                    )}
+                    {phaseName(it.phase as keyof typeof PHASE_LABELS)}
                   </span>
 
-                  <span className="min-w-0 flex-1 truncate text-sm font-bold">
-                    {it.slideTitle}
-                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-bold">{it.slideTitle}</span>
 
                   <span className="text-[11px] text-muted-foreground">
-                    {isArabic
-                      ? `شريحة ${it.slideIndex + 1}`
-                      : `Slide ${it.slideIndex + 1}`}
+                    {isArabic ? `شريحة ${it.slideIndex + 1}` : `Slide ${it.slideIndex + 1}`}
                   </span>
                 </div>
 
@@ -220,16 +183,11 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
                   value={it.questions.join("\n")}
                   onChange={(e) =>
                     patch(i, {
-                      questions:
-                        e.target.value.split("\n"),
+                      questions: e.target.value.split("\n"),
                     })
                   }
                   rows={2}
-                  placeholder={
-                    isArabic
-                      ? "سؤال في كل سطر"
-                      : "One question per line"
-                  }
+                  placeholder={isArabic ? "سؤال في كل سطر" : "One question per line"}
                   className="w-full rounded border p-2 text-sm"
                 />
 
@@ -237,8 +195,7 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
                   value={(it.answers ?? []).join("\n")}
                   onChange={(e) =>
                     patch(i, {
-                      answers:
-                        e.target.value.split("\n"),
+                      answers: e.target.value.split("\n"),
                     })
                   }
                   rows={2}
@@ -260,11 +217,7 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
                       selfCheck: e.target.value,
                     })
                   }
-                  placeholder={
-                    isArabic
-                      ? "أستطيع أن..."
-                      : "I can..."
-                  }
+                  placeholder={isArabic ? "أستطيع أن..." : "I can..."}
                   className="mt-1 w-full rounded border p-2 text-sm"
                 />
               </li>
@@ -281,9 +234,7 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
             >
               <Printer className="h-4 w-4" />
 
-              {isArabic
-                ? "اطبع ورقة الطالب"
-                : "Print Student Worksheet"}
+              {isArabic ? "اطبع ورقة الطالب" : "Print Student Worksheet"}
             </a>
 
             <a
@@ -295,9 +246,7 @@ export function WorksheetBuilder({ plan }: { plan: LessonPlan }) {
             >
               <UserX className="h-4 w-4" />
 
-              {isArabic
-                ? "نسخة الطالب الغائب (شاملة)"
-                : "Absent Student Version"}
+              {isArabic ? "نسخة الطالب الغائب (شاملة)" : "Absent Student Version"}
             </a>
           </div>
         </div>

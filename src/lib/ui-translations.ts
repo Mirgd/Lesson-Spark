@@ -53,8 +53,7 @@ export const uiTranslations = {
       smartPlanningTitle: "تخطيط ذكي وتنفيذ سلس",
       smartPlanningDesc: "اكتب نشاط المعلم والطالب في بطاقة واحدة",
       focusedExecutionTitle: "تنفيذ مركّز",
-      focusedExecutionDesc:
-        "شاشة المعلم واضحة — شاشة الطالب مستقلة للبروجكتور",
+      focusedExecutionDesc: "شاشة المعلم واضحة — شاشة الطالب مستقلة للبروجكتور",
       aiCurriculumTitle: "ذكاء يقرأ مقررك",
       aiCurriculumDesc: "ارفع PDF/DOCX واحصل على اقتراحات دقيقة",
     },
@@ -135,14 +134,12 @@ export const uiTranslations = {
         "An intelligent 5E lesson planner for a 60-minute lesson with homework — plan your lesson, launch the student screen with one click, and let AI read your curriculum and suggest meaningful learning activities.",
       startPlanning: "Start Planning Now",
       smartPlanningTitle: "Smart Planning, Smooth Delivery",
-      smartPlanningDesc:
-        "Organize teacher and student activities in one clear lesson card.",
+      smartPlanningDesc: "Organize teacher and student activities in one clear lesson card.",
       focusedExecutionTitle: "Focused Lesson Delivery",
       focusedExecutionDesc:
         "A clear teacher view with a separate student screen for classroom projection.",
       aiCurriculumTitle: "AI That Reads Your Curriculum",
-      aiCurriculumDesc:
-        "Upload a PDF or DOCX and receive curriculum-based suggestions.",
+      aiCurriculumDesc: "Upload a PDF or DOCX and receive curriculum-based suggestions.",
     },
 
     planning: {

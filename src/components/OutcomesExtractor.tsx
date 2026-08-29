@@ -9,7 +9,6 @@ import { reportAiError } from "@/lib/ai-error";
 import type { ContentLanguage } from "@/lib/lang";
 import { SharedFileBadge } from "@/components/SharedFileBadge";
 
-
 export function OutcomesExtractor({
   subject,
   grade,
@@ -51,16 +50,10 @@ export function OutcomesExtractor({
       if (existingOutcomes?.length) {
         setOutcomes(existingOutcomes);
 
-        setSelected(
-          Object.fromEntries(
-            existingOutcomes.map((_, index) => [index, true])
-          )
-        );
+        setSelected(Object.fromEntries(existingOutcomes.map((_, index) => [index, true])));
 
         setSource(
-          isArabic
-            ? "تم استخراجها مسبقًا من المقرر"
-            : "Previously extracted from the curriculum"
+          isArabic ? "تم استخراجها مسبقًا من المقرر" : "Previously extracted from the curriculum",
         );
 
         setOpen(true);
@@ -68,7 +61,7 @@ export function OutcomesExtractor({
         toast.success(
           isArabic
             ? "تم تحميل نواتج التعلم المستخرجة مسبقًا"
-            : "Previously extracted learning outcomes loaded"
+            : "Previously extracted learning outcomes loaded",
         );
 
         return;
@@ -86,11 +79,7 @@ export function OutcomesExtractor({
 
       setOutcomes(result.outcomes);
 
-      setSelected(
-        Object.fromEntries(
-          result.outcomes.map((_, i) => [i, true])
-        )
-      );
+      setSelected(Object.fromEntries(result.outcomes.map((_, i) => [i, true])));
 
       setSource(result.source ?? "");
       setOpen(true);
@@ -98,13 +87,9 @@ export function OutcomesExtractor({
       toast.error(
         reportAiError(
           e,
-          isArabic
-            ? "استخراج نواتج التعلم"
-            : "Learning Outcomes Extraction",
-          isArabic
-            ? "تعذّر استخراج نواتج التعلم"
-            : "Unable to extract learning outcomes"
-        )
+          isArabic ? "استخراج نواتج التعلم" : "Learning Outcomes Extraction",
+          isArabic ? "تعذّر استخراج نواتج التعلم" : "Unable to extract learning outcomes",
+        ),
       );
     } finally {
       setLoading(false);
@@ -116,9 +101,7 @@ export function OutcomesExtractor({
 
     if (!picked.length) {
       toast.warning(
-        isArabic
-          ? "حدّد ناتجاً واحداً على الأقل"
-          : "Select at least one learning outcome"
+        isArabic ? "حدّد ناتجاً واحداً على الأقل" : "Select at least one learning outcome",
       );
 
       return;
@@ -128,17 +111,13 @@ export function OutcomesExtractor({
     setOpen(false);
 
     toast.success(
-      isArabic
-        ? "تمت إضافة نواتج التعلم للخطة"
-        : "Learning outcomes added to the lesson plan"
+      isArabic ? "تمت إضافة نواتج التعلم للخطة" : "Learning outcomes added to the lesson plan",
     );
   };
 
   return (
     <>
-      {!missingCurriculum && (
-        <SharedFileBadge name={fileName} />
-      )}
+      {!missingCurriculum && <SharedFileBadge name={fileName} />}
 
       <button
         type="button"
@@ -157,11 +136,7 @@ export function OutcomesExtractor({
         }
         className="flex w-full items-center justify-center gap-2 rounded-lg bg-gold px-4 py-2.5 text-sm font-bold text-white shadow-[var(--shadow-soft)] hover:opacity-90 disabled:opacity-60"
       >
-        {loading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : (
-          <Sparkles className="h-4 w-4" />
-        )}
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
 
         {loading
           ? isArabic
@@ -203,10 +178,8 @@ export function OutcomesExtractor({
                 </h2>
 
                 <p className="mt-0.5 text-xs text-muted-foreground">
-                  {isArabic ? "المادة:" : "Subject:"}{" "}
-                  {subject || "—"} ·{" "}
-                  {isArabic ? "الصف:" : "Grade:"}{" "}
-                  {grade || "—"}
+                  {isArabic ? "المادة:" : "Subject:"} {subject || "—"} ·{" "}
+                  {isArabic ? "الصف:" : "Grade:"} {grade || "—"}
                 </p>
               </div>
 
@@ -221,9 +194,7 @@ export function OutcomesExtractor({
 
             <div className="p-4">
               <div className="mb-3 text-sm font-bold">
-                {isArabic
-                  ? "ماذا سأتعلم في هذا الدرس؟"
-                  : "What Will I Learn in This Lesson?"}
+                {isArabic ? "ماذا سأتعلم في هذا الدرس؟" : "What Will I Learn in This Lesson?"}
               </div>
 
               <ul className="space-y-2">
@@ -243,19 +214,11 @@ export function OutcomesExtractor({
                           : "border-border text-muted-foreground hover:bg-accent/40"
                       }`}
                     >
-                      <span
-                        className={
-                          selected[i]
-                            ? "text-gold"
-                            : "text-muted-foreground"
-                        }
-                      >
+                      <span className={selected[i] ? "text-gold" : "text-muted-foreground"}>
                         {selected[i] ? "☑" : "○"}
                       </span>
 
-                      <span className="flex-1">
-                        {o}
-                      </span>
+                      <span className="flex-1">{o}</span>
                     </button>
                   </li>
                 ))}
@@ -264,14 +227,10 @@ export function OutcomesExtractor({
               {source && (
                 <div className="mt-4 rounded-lg bg-muted p-3">
                   <div className="mb-1 text-xs font-bold text-muted-foreground">
-                    {isArabic
-                      ? "📌 المصدر من المقرر:"
-                      : "📌 Source from Curriculum:"}
+                    {isArabic ? "📌 المصدر من المقرر:" : "📌 Source from Curriculum:"}
                   </div>
 
-                  <p className="text-xs italic leading-relaxed text-muted-foreground">
-                    “{source}”
-                  </p>
+                  <p className="text-xs italic leading-relaxed text-muted-foreground">“{source}”</p>
                 </div>
               )}
             </div>
@@ -288,9 +247,7 @@ export function OutcomesExtractor({
                 onClick={apply}
                 className="rounded-lg bg-gold px-4 py-2 text-sm font-bold text-white hover:opacity-90"
               >
-                {isArabic
-                  ? "أضف المحدد لخطة الدرس ✓"
-                  : "Add Selected to Lesson Plan ✓"}
+                {isArabic ? "أضف المحدد لخطة الدرس ✓" : "Add Selected to Lesson Plan ✓"}
               </button>
             </div>
           </div>

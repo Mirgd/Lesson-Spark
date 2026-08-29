@@ -35,7 +35,6 @@ async function callGateway(system: string, user: string) {
   });
 }
 
-
 function systemPrompt(curriculum: string | undefined, lang: "ar" | "en") {
   const cur = (curriculum ?? "").slice(0, 8000).trim();
   return `أنت خبير تربوي في تعليم STEM متخصص في نموذج 5E للتعلم العميق.

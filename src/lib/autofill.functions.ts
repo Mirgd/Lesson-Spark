@@ -90,9 +90,6 @@ ${langInstruction(data.lang)}`;
       }
     }
 
-
-
-
     const hw = (parsed.homework ?? {}) as Record<string, unknown>;
     return {
       outcomes: Array.isArray(parsed.outcomes)

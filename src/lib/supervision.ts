@@ -141,15 +141,18 @@ export interface StaffDirectory {
 
 /** دليل الكادر من public.profiles + public.user_roles + public.lesson_plans */
 export async function listStaffDirectory(): Promise<StaffDirectory> {
-  const [{ data: profiles, error: pErr }, { data: roles, error: rErr }, { data: plans, error: lErr }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("id, full_name, email, school, branch, stage, subject, is_active")
-        .order("full_name", { ascending: true }),
-      supabase.from("user_roles").select("user_id, role"),
-      supabase.from("lesson_plans").select("id, user_id, status, updated_at"),
-    ]);
+  const [
+    { data: profiles, error: pErr },
+    { data: roles, error: rErr },
+    { data: plans, error: lErr },
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, full_name, email, school, branch, stage, subject, is_active")
+      .order("full_name", { ascending: true }),
+    supabase.from("user_roles").select("user_id, role"),
+    supabase.from("lesson_plans").select("id, user_id, status, updated_at"),
+  ]);
   if (pErr) throw pErr;
   if (rErr) throw rErr;
   if (lErr) throw lErr;
@@ -188,62 +191,47 @@ export async function listStaffDirectory(): Promise<StaffDirectory> {
     completedPlans: (plans ?? []).filter((p) => p.status === "complete").length,
   };
 }
-export async function setTeacherSupervisorRole(
-  userId: string,
-  nextRole: "teacher" | "supervisor",
-) {
-  const { data: auth, error: authError } =
-    await supabase.auth.getUser();
+export async function setTeacherSupervisorRole(userId: string, nextRole: "teacher" | "supervisor") {
+  const { data: auth, error: authError } = await supabase.auth.getUser();
 
   if (authError || !auth.user) {
     throw new Error("يجب تسجيل الدخول أولاً");
   }
 
   // نتحقق أن المستخدم الحالي مشرف أو أدمن
-  const { data: myRoles, error: myRolesError } =
-    await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", auth.user.id);
+  const { data: myRoles, error: myRolesError } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", auth.user.id);
 
   if (myRolesError) throw myRolesError;
 
-  const roles = (myRoles ?? []).map(
-    (r) => r.role as AppRole,
-  );
+  const roles = (myRoles ?? []).map((r) => r.role as AppRole);
 
   const allowed =
-    roles.includes("supervisor") ||
-    roles.includes("school_admin") ||
-    roles.includes("admin");
+    roles.includes("supervisor") || roles.includes("school_admin") || roles.includes("admin");
 
   if (!allowed) {
-    throw new Error(
-      "ليس لديك صلاحية لتعديل أدوار المستخدمين",
-    );
+    throw new Error("ليس لديك صلاحية لتعديل أدوار المستخدمين");
   }
 
   // لا نسمح للمستخدم بتعديل نفسه من هذه الشاشة
   if (userId === auth.user.id) {
-    throw new Error(
-      "لا يمكنك تعديل صلاحيتك من هذه الصفحة",
-    );
+    throw new Error("لا يمكنك تعديل صلاحيتك من هذه الصفحة");
   }
 
   if (nextRole === "supervisor") {
     // احتفظ بدور teacher وأضف supervisor
     // لأن النظام الحالي يسمح للحساب بحمل أكثر من دور.
-    const { error } = await supabase
-      .from("user_roles")
-      .upsert(
-        {
-          user_id: userId,
-          role: "supervisor",
-        },
-        {
-          onConflict: "user_id,role",
-        },
-      );
+    const { error } = await supabase.from("user_roles").upsert(
+      {
+        user_id: userId,
+        role: "supervisor",
+      },
+      {
+        onConflict: "user_id,role",
+      },
+    );
 
     if (error) throw error;
   } else {
@@ -257,17 +245,15 @@ export async function setTeacherSupervisorRole(
     if (error) throw error;
 
     // تأكد أن teacher موجود
-    const { error: teacherError } = await supabase
-      .from("user_roles")
-      .upsert(
-        {
-          user_id: userId,
-          role: "teacher",
-        },
-        {
-          onConflict: "user_id,role",
-        },
-      );
+    const { error: teacherError } = await supabase.from("user_roles").upsert(
+      {
+        user_id: userId,
+        role: "teacher",
+      },
+      {
+        onConflict: "user_id,role",
+      },
+    );
 
     if (teacherError) throw teacherError;
   }

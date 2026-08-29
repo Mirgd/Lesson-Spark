@@ -38,8 +38,7 @@ export const PHASES: PhaseMeta[] = [
     nameEn: "Explore",
     color: "#1E7CA8",
     defaultDuration: 16,
-    teacherHint:
-      "الطالب يُجرّب ويسجّل بنفسه — أنت تمشي وتلاحظ فقط. لا تشرح قبل أن يستكشفوا.",
+    teacherHint: "الطالب يُجرّب ويسجّل بنفسه — أنت تمشي وتلاحظ فقط. لا تشرح قبل أن يستكشفوا.",
     studentPrompt: "جرّب... سجّل ملاحظاتك... ماذا اكتشفت؟",
     placeholder:
       "أوزّع المجموعات وأقدّم التحدي/التجربة\nأمشي بين المجموعات وأُلاحظ دون أن أتدخل\nأطرح أسئلة توجيهية فقط عند الحاجة",
@@ -53,8 +52,7 @@ export const PHASES: PhaseMeta[] = [
     nameEn: "Explain",
     color: "#1B2A4A",
     defaultDuration: 13,
-    teacherHint:
-      "اسأل الطلاب أولاً: ماذا لاحظتم؟ ثم أنت تنظّم وتضيف المصطلح العلمي الدقيق.",
+    teacherHint: "اسأل الطلاب أولاً: ماذا لاحظتم؟ ثم أنت تنظّم وتضيف المصطلح العلمي الدقيق.",
     studentPrompt: "ماذا تعلمت؟ كيف تُفسّر ما لاحظته؟",
     placeholder:
       "أطلب من كل مجموعة عرض نتائجها\nأقارن بين الإجابات المختلفة\nأُضيف المصطلح العلمي الدقيق بعد أن يُفسّروا",
@@ -68,8 +66,7 @@ export const PHASES: PhaseMeta[] = [
     nameEn: "Elaborate",
     color: "#6B46C1",
     defaultDuration: 11,
-    teacherHint:
-      "قدّم سيناريو جديداً مختلفاً. الطالب يُطبّق الفهم — لا تشرح، فقط قدّم التحدي.",
+    teacherHint: "قدّم سيناريو جديداً مختلفاً. الطالب يُطبّق الفهم — لا تشرح، فقط قدّم التحدي.",
     studentPrompt: "كيف أُطبّق ما تعلمته في موقف جديد؟",
     placeholder:
       "أقدّم سيناريو أو مشكلة جديدة مختلفة\nأترك المجموعات تُطبّق الفهم باستقلالية\nلا أشرح — فقط أُراقب وأُسجّل",
@@ -83,11 +80,9 @@ export const PHASES: PhaseMeta[] = [
     nameEn: "Evaluate",
     color: "#276749",
     defaultDuration: 5,
-    teacherHint:
-      "قيّم تحقق نواتج التعلم. بطاقة خروج أو سؤال تأملي. الواجب يخرج من هنا.",
+    teacherHint: "قيّم تحقق نواتج التعلم. بطاقة خروج أو سؤال تأملي. الواجب يخرج من هنا.",
     studentPrompt: "ماذا تعلمت اليوم؟ ما الذي ما زال غامضاً؟",
-    placeholder:
-      "أوزّع بطاقة الخروج:\n3 أشياء تعلمتها\n2 أسئلة ما زالت عندك\n1 شيء ستُطبّقه",
+    placeholder: "أوزّع بطاقة الخروج:\n3 أشياء تعلمتها\n2 أسئلة ما زالت عندك\n1 شيء ستُطبّقه",
     questionsPlaceholder:
       "• ما أهم شيء تعلمته اليوم؟\n• ما الذي ما زال غامضاً بالنسبة لك؟\n• كيف تُقيّم فهمك من 1 إلى 10؟ ولماذا؟",
     studentPlaceholder: "أجب: (3) أشياء تعلمتها — (2) أسئلة لديك — (1) شيء ستُطبّقه",
@@ -209,7 +204,6 @@ export interface PhaseData {
   images?: PhaseImage[];
 }
 
-
 export interface HomeworkData {
   teacherNote: string;
   studentText: string;
@@ -224,6 +218,8 @@ export interface ReflectionData {
 }
 
 export interface LessonPlan {
+  classId?: string;
+  scheduledDate?: string;
   id: string;
   createdAt: string;
   subject: string;
@@ -322,7 +318,6 @@ export function useLocalStorage<T>(key: string, initial: T): [T, (v: T | ((p: T)
 
   return [value, setValue];
 }
-
 
 export function useCurrentPlan() {
   return useLocalStorage<LessonPlan>(CURRENT_KEY, emptyPlan());

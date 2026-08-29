@@ -90,9 +90,7 @@ function Consent() {
           {LOGO_URL && (
             <img src={LOGO_URL} alt={COMPANY_AR} style={{ height: 48 }} className="w-auto" />
           )}
-          <h1 className="text-xl font-black text-primary">
-            ربط «{clientName}» بحسابك
-          </h1>
+          <h1 className="text-xl font-black text-primary">ربط «{clientName}» بحسابك</h1>
         </div>
 
         <p className="text-sm leading-relaxed text-muted-foreground">

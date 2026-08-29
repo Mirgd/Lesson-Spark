@@ -15,9 +15,7 @@ export function PhaseImages({
   dark?: boolean;
 }) {
   if (!images || images.length === 0) return null;
-  const ordered = [...images].sort(
-    (a, b) => Number(isBookImage(b)) - Number(isBookImage(a)),
-  );
+  const ordered = [...images].sort((a, b) => Number(isBookImage(b)) - Number(isBookImage(a)));
   const caption = dark ? "text-white/60" : "text-muted-foreground";
 
   return (

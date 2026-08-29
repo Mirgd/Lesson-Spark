@@ -61,7 +61,7 @@ function Dashboard() {
           ? e.message
           : isArabic
             ? "تعذّر تحميل الخطط"
-            : "Unable to load lesson plans"
+            : "Unable to load lesson plans",
       );
     } finally {
       setBusy(false);
@@ -80,27 +80,13 @@ function Dashboard() {
   }, [loading, name, refresh]);
 
   const subjects = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          rows
-            .map((r) => r.subject)
-            .filter(Boolean) as string[]
-        )
-      ),
-    [rows]
+    () => Array.from(new Set(rows.map((r) => r.subject).filter(Boolean) as string[])),
+    [rows],
   );
 
   const grades = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          rows
-            .map((r) => r.grade)
-            .filter(Boolean) as string[]
-        )
-      ),
-    [rows]
+    () => Array.from(new Set(rows.map((r) => r.grade).filter(Boolean) as string[])),
+    [rows],
   );
 
   const filtered = rows.filter(
@@ -108,17 +94,13 @@ function Dashboard() {
       (!q || (r.topic ?? "").includes(q)) &&
       (!status || r.status === status) &&
       (!subject || r.subject === subject) &&
-      (!grade || r.grade === grade)
+      (!grade || r.grade === grade),
   );
 
   const counts = {
     all: rows.length,
-    draft: rows.filter(
-      (r) => r.status === "draft"
-    ).length,
-    complete: rows.filter(
-      (r) => r.status === "complete"
-    ).length,
+    draft: rows.filter((r) => r.status === "draft").length,
+    complete: rows.filter((r) => r.status === "complete").length,
   };
 
   const open = async (row: PlanRow) => {
@@ -126,17 +108,11 @@ function Dashboard() {
       const fresh = await getPlan(row.id);
 
       if (!fresh) {
-        toast.error(
-          isArabic
-            ? "لم يتم العثور على الخطة"
-            : "Lesson plan not found"
-        );
+        toast.error(isArabic ? "لم يتم العثور على الخطة" : "Lesson plan not found");
         return;
       }
 
-      applyBundleLocally(
-        rowToBundle(fresh)
-      );
+      applyBundleLocally(rowToBundle(fresh));
 
       navigate({
         to: "/planning",
@@ -147,16 +123,13 @@ function Dashboard() {
           ? e.message
           : isArabic
             ? "تعذّر فتح الخطة"
-            : "Unable to open the lesson plan"
+            : "Unable to open the lesson plan",
       );
     }
   };
 
   const newPlan = () => {
-    localStorage.setItem(
-      "rz_current",
-      JSON.stringify(emptyPlan())
-    );
+    localStorage.setItem("rz_current", JSON.stringify(emptyPlan()));
 
     navigate({
       to: "/planning",
@@ -176,15 +149,11 @@ function Dashboard() {
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-black text-primary">
-            {isArabic
-              ? `مرحباً ${name} 👋`
-              : `Welcome, ${name} 👋`}
+            {isArabic ? `مرحباً ${name} 👋` : `Welcome, ${name} 👋`}
           </h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            {[identity?.subject, identity?.stage, identity?.school]
-              .filter(Boolean)
-              .join(" · ") ||
+            {[identity?.subject, identity?.stage, identity?.school].filter(Boolean).join(" · ") ||
               (isArabic
                 ? "يمكنك تحديث بياناتك من صفحة الاسم"
                 : "You can update your information from your profile page")}
@@ -197,30 +166,22 @@ function Dashboard() {
         >
           <Plus className="h-4 w-4" />
 
-          {isArabic
-            ? "خطة جديدة"
-            : "New Plan"}
+          {isArabic ? "خطة جديدة" : "New Plan"}
         </button>
       </div>
 
       <div className="mb-5 grid grid-cols-3 gap-3">
         {[
           {
-            label: isArabic
-              ? "الكل"
-              : "All",
+            label: isArabic ? "الكل" : "All",
             value: counts.all,
           },
           {
-            label: isArabic
-              ? "مسودة"
-              : "Draft",
+            label: isArabic ? "مسودة" : "Draft",
             value: counts.draft,
           },
           {
-            label: isArabic
-              ? "مكتملة"
-              : "Complete",
+            label: isArabic ? "مكتملة" : "Complete",
             value: counts.complete,
           },
         ].map((c) => (
@@ -228,13 +189,9 @@ function Dashboard() {
             key={c.label}
             className="rounded-xl border bg-card p-4 text-center shadow-[var(--shadow-soft)]"
           >
-            <div className="text-2xl font-black text-primary">
-              {c.value}
-            </div>
+            <div className="text-2xl font-black text-primary">{c.value}</div>
 
-            <div className="text-xs text-muted-foreground">
-              {c.label}
-            </div>
+            <div className="text-xs text-muted-foreground">{c.label}</div>
           </div>
         ))}
       </div>
@@ -242,35 +199,20 @@ function Dashboard() {
       <div className="mb-5 flex flex-wrap gap-2">
         <input
           value={q}
-          onChange={(e) =>
-            setQ(e.target.value)
-          }
-          placeholder={
-            isArabic
-              ? "🔍 بحث بالموضوع..."
-              : "🔍 Search by topic..."
-          }
+          onChange={(e) => setQ(e.target.value)}
+          placeholder={isArabic ? "🔍 بحث بالموضوع..." : "🔍 Search by topic..."}
           className="min-w-[180px] flex-1 rounded-lg border bg-background px-3 py-2 text-sm"
         />
 
         <select
           value={subject}
-          onChange={(e) =>
-            setSubject(e.target.value)
-          }
+          onChange={(e) => setSubject(e.target.value)}
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">
-            {isArabic
-              ? "المادة"
-              : "Subject"}
-          </option>
+          <option value="">{isArabic ? "المادة" : "Subject"}</option>
 
           {subjects.map((s) => (
-            <option
-              key={s}
-              value={s}
-            >
+            <option key={s} value={s}>
               {s}
             </option>
           ))}
@@ -278,22 +220,13 @@ function Dashboard() {
 
         <select
           value={grade}
-          onChange={(e) =>
-            setGrade(e.target.value)
-          }
+          onChange={(e) => setGrade(e.target.value)}
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">
-            {isArabic
-              ? "الصف"
-              : "Grade"}
-          </option>
+          <option value="">{isArabic ? "الصف" : "Grade"}</option>
 
           {grades.map((s) => (
-            <option
-              key={s}
-              value={s}
-            >
+            <option key={s} value={s}>
               {s}
             </option>
           ))}
@@ -301,35 +234,19 @@ function Dashboard() {
 
         <select
           value={status}
-          onChange={(e) =>
-            setStatus(e.target.value)
-          }
+          onChange={(e) => setStatus(e.target.value)}
           className="rounded-lg border bg-background px-3 py-2 text-sm"
         >
-          <option value="">
-            {isArabic
-              ? "الحالة"
-              : "Status"}
-          </option>
+          <option value="">{isArabic ? "الحالة" : "Status"}</option>
 
-          <option value="draft">
-            {isArabic
-              ? "مسودة"
-              : "Draft"}
-          </option>
+          <option value="draft">{isArabic ? "مسودة" : "Draft"}</option>
 
-          <option value="complete">
-            {isArabic
-              ? "مكتملة"
-              : "Complete"}
-          </option>
+          <option value="complete">{isArabic ? "مكتملة" : "Complete"}</option>
         </select>
       </div>
 
       <h2 className="mb-3 text-lg font-bold text-primary">
-        {isArabic
-          ? "خططي الدراسية"
-          : "My Lesson Plans"}
+        {isArabic ? "خططي الدراسية" : "My Lesson Plans"}
       </h2>
 
       {filtered.length === 0 ? (
@@ -348,16 +265,11 @@ function Dashboard() {
               <div className="flex flex-wrap items-start justify-between gap-2">
                 <div>
                   <h3 className="text-base font-bold text-primary">
-                    {row.topic ||
-                      (isArabic
-                        ? "بدون عنوان"
-                        : "Untitled Lesson")}
+                    {row.topic || (isArabic ? "بدون عنوان" : "Untitled Lesson")}
                   </h3>
 
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    {[row.subject, row.grade]
-                      .filter(Boolean)
-                      .join(" · ")}
+                    {[row.subject, row.grade].filter(Boolean).join(" · ")}
                   </p>
                 </div>
 
@@ -394,86 +306,53 @@ function Dashboard() {
               </div>
 
               <p className="mt-2 text-[11px] text-muted-foreground">
-                {isArabic
-                  ? "آخر تعديل:"
-                  : "Last updated:"}{" "}
-                {relativeTime(
-                  row.updated_at
-                )}
+                {isArabic ? "آخر تعديل:" : "Last updated:"} {relativeTime(row.updated_at)}
               </p>
 
-              <PlanReviewBadge
-                planId={row.id}
-              />
+              <PlanReviewBadge planId={row.id} />
 
               <div className="mt-3 flex gap-2">
                 <button
-                  onClick={() =>
-                    open(row)
-                  }
+                  onClick={() => open(row)}
                   className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent"
                 >
                   <FolderOpen className="h-3.5 w-3.5" />
 
-                  {isArabic
-                    ? "فتح"
-                    : "Open"}
+                  {isArabic ? "فتح" : "Open"}
                 </button>
 
                 <button
                   onClick={async () => {
-                    await duplicatePlan(
-                      row.id
-                    );
+                    await duplicatePlan(row.id);
 
                     await refresh();
 
-                    toast.success(
-                      isArabic
-                        ? "تم نسخ الخطة"
-                        : "Lesson plan duplicated"
-                    );
+                    toast.success(isArabic ? "تم نسخ الخطة" : "Lesson plan duplicated");
                   }}
                   className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium hover:bg-accent"
                 >
                   <Copy className="h-3.5 w-3.5" />
 
-                  {isArabic
-                    ? "نسخ"
-                    : "Duplicate"}
+                  {isArabic ? "نسخ" : "Duplicate"}
                 </button>
 
                 <button
                   onClick={async () => {
-                    if (
-                      !confirm(
-                        isArabic
-                          ? "حذف هذه الخطة؟"
-                          : "Delete this lesson plan?"
-                      )
-                    ) {
+                    if (!confirm(isArabic ? "حذف هذه الخطة؟" : "Delete this lesson plan?")) {
                       return;
                     }
 
-                    await deletePlan(
-                      row.id
-                    );
+                    await deletePlan(row.id);
 
                     await refresh();
 
-                    toast.success(
-                      isArabic
-                        ? "تم الحذف"
-                        : "Lesson plan deleted"
-                    );
+                    toast.success(isArabic ? "تم الحذف" : "Lesson plan deleted");
                   }}
                   className="inline-flex items-center gap-1 rounded-md border px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
 
-                  {isArabic
-                    ? "حذف"
-                    : "Delete"}
+                  {isArabic ? "حذف" : "Delete"}
                 </button>
               </div>
             </article>

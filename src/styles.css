@@ -231,9 +231,16 @@
   line-height: 1.8;
 }
 
-
 @media print {
-  nav, .no-print { display: none !important; }
-  body { background: white !important; color: black !important; }
-  .print-page { padding: 1.5rem !important; }
+  nav,
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .print-page {
+    padding: 1.5rem !important;
+  }
 }

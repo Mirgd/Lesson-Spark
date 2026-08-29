@@ -32,7 +32,6 @@ export function PhaseImagePicker({
   const { name: sharedName } = useSharedFile();
   const [hasPdf, setHasPdf] = useState(false);
 
-
   const syncPages = useCallback(async () => {
     setHasPdf(Boolean(getLastPdfFile()));
     try {
@@ -144,7 +143,9 @@ export function PhaseImagePicker({
   /* ---------- الواجهة ---------- */
   const tabCls = (active: boolean) =>
     `flex-1 rounded-t-lg px-3 py-2 text-[13px] font-bold transition-colors ${
-      active ? "bg-card text-primary shadow-[inset_0_-3px_0_var(--gold)]" : "bg-muted text-muted-foreground hover:text-primary"
+      active
+        ? "bg-card text-primary shadow-[inset_0_-3px_0_var(--gold)]"
+        : "bg-muted text-muted-foreground hover:text-primary"
     }`;
 
   return (
@@ -204,10 +205,15 @@ export function PhaseImagePicker({
                       type="button"
                       onClick={() => toggleBook(p)}
                       className={`relative overflow-hidden rounded-md border-2 transition-all ${
-                        selected ? "border-gold ring-2 ring-gold/40" : "border-transparent hover:border-muted-foreground/40"
+                        selected
+                          ? "border-gold ring-2 ring-gold/40"
+                          : "border-transparent hover:border-muted-foreground/40"
                       }`}
                     >
-                      <BookPageImage page={p} className="aspect-[3/4] w-full bg-white object-contain" />
+                      <BookPageImage
+                        page={p}
+                        className="aspect-[3/4] w-full bg-white object-contain"
+                      />
                       <span className="block bg-primary/90 py-0.5 text-[11px] font-bold text-white">
                         صفحة {p}
                       </span>
@@ -232,8 +238,8 @@ export function PhaseImagePicker({
                     <ChevronRight className="h-4 w-4" />
                   </button>
                   <span className="text-xs text-muted-foreground">
-                    صفحة {pageIndex * PER_PAGE + 1}-{Math.min(pages.length, (pageIndex + 1) * PER_PAGE)} من{" "}
-                    {pages.length}
+                    صفحة {pageIndex * PER_PAGE + 1}-
+                    {Math.min(pages.length, (pageIndex + 1) * PER_PAGE)} من {pages.length}
                   </span>
                   <button
                     type="button"
@@ -265,7 +271,11 @@ export function PhaseImagePicker({
               disabled={webLoading}
               className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-60"
             >
-              {webLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+              {webLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Search className="h-3.5 w-3.5" />
+              )}
               ابحث تلقائياً
             </button>
           </div>
@@ -281,10 +291,17 @@ export function PhaseImagePicker({
                     onClick={() => toggleWeb(img)}
                     title={img.alt}
                     className={`relative aspect-video overflow-hidden rounded-md border-2 transition-all ${
-                      selected ? "border-gold ring-2 ring-gold/40" : "border-transparent hover:border-muted-foreground/40"
+                      selected
+                        ? "border-gold ring-2 ring-gold/40"
+                        : "border-transparent hover:border-muted-foreground/40"
                     }`}
                   >
-                    <img src={img.thumb} alt={img.alt} className="h-full w-full object-cover" loading="lazy" />
+                    <img
+                      src={img.thumb}
+                      alt={img.alt}
+                      className="h-full w-full object-cover"
+                      loading="lazy"
+                    />
                     {selected && (
                       <span className="absolute end-1 top-1 rounded-full bg-gold px-1.5 py-0.5 text-[10px] font-bold text-white">
                         ✓
@@ -335,12 +352,17 @@ export function PhaseImagePicker({
             {images.map((img) => (
               <div key={img.id} className="relative overflow-hidden rounded-md border">
                 {isBookImage(img) ? (
-                  <BookPageImage page={img.page} className="aspect-video w-full bg-white object-contain" />
+                  <BookPageImage
+                    page={img.page}
+                    className="aspect-video w-full bg-white object-contain"
+                  />
                 ) : (
                   <img src={img.thumb} alt={img.alt} className="aspect-video w-full object-cover" />
                 )}
                 <span className="block bg-muted py-0.5 text-center text-[10px] text-muted-foreground">
-                  {isBookImage(img) ? `صفحة ${img.page} من كتاب الطالب` : `Unsplash · ${img.author}`}
+                  {isBookImage(img)
+                    ? `صفحة ${img.page} من كتاب الطالب`
+                    : `Unsplash · ${img.author}`}
                 </span>
                 <button
                   type="button"

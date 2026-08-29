@@ -1,15 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import {
-  UiLanguageProvider,
-  useUiLanguage,
-} from "@/lib/ui-language";
+import { UiLanguageProvider, useUiLanguage } from "@/lib/ui-language";
 import {
   Outlet,
   Link,
   createRootRouteWithContext,
   useRouter,
   useRouterState,
-
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -21,9 +17,6 @@ import { reportLovableError } from "../lib/lovable-error-reporting";
 import { LOGO_URL, COMPANY_AR } from "@/lib/branding";
 import { NewLessonButton } from "@/components/NewLessonButton";
 import { ROLE_LABEL, signOutAndRedirect, useSession } from "@/lib/session";
-
-
-
 
 function NotFoundComponent() {
   return (
@@ -102,8 +95,6 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "مخطط درس STEM ذكي وفق نموذج 5E لحصة 60 دقيقة — ذكاء اصطناعي يقرأ مقررك ويبني خطة الدرس والعرض التقديمي تلقائياً",
       },
-
-
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -122,11 +113,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
-function RootShell({
-  children,
-}: {
-  children: ReactNode;
-}) {
+function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="ar" dir="rtl" suppressHydrationWarning>
       <head>
@@ -143,12 +130,9 @@ function RootShell({
 
 function Header() {
   const { identity } = useSession();
-  const {
-  language,
-  toggleLanguage,
-} = useUiLanguage();
+  const { language, toggleLanguage } = useUiLanguage();
 
-const isArabic = language === "ar";
+  const isArabic = language === "ar";
   const isSupervisor = identity?.isSupervisor ?? false;
   const linkCls =
     "px-4 py-1.5 rounded-lg text-[15px] font-semibold text-[#4A5568] hover:bg-[#FBF4E3] hover:text-gold transition-all";
@@ -163,14 +147,12 @@ const isArabic = language === "ar";
               {isArabic ? "المدرسة" : "Al-Ramz School"}
             </span>
 
-            <span className="text-[20px] font-extrabold text-gold">
-              {isArabic ? "الرمز" : ""}
-            </span>
+            <span className="text-[20px] font-extrabold text-gold">{isArabic ? "الرمز" : ""}</span>
 
             <span className="hidden text-sm font-medium text-muted-foreground sm:inline">
               {isArabic ? "· التعلم العميق" : "· Deep Learning"}
             </span>
-        </Link>
+          </Link>
           {LOGO_URL && (
             <img
               src={LOGO_URL}
@@ -231,24 +213,24 @@ const isArabic = language === "ar";
           </Link>
 
           {isSupervisor && (
-  <>
-    <Link
-      to="/supervisor"
-      className={linkCls}
-      activeProps={{ className: `${linkCls} ${activeCls}` }}
-    >
-      {isArabic ? "الإشراف" : "Supervision"}
-    </Link>
+            <>
+              <Link
+                to="/supervisor"
+                className={linkCls}
+                activeProps={{ className: `${linkCls} ${activeCls}` }}
+              >
+                {isArabic ? "الإشراف" : "Supervision"}
+              </Link>
 
-    <Link
-      to="/admin"
-      className={`${linkCls} border border-gold/60 bg-gold/10 text-gold hover:bg-gold hover:text-white`}
-      activeProps={{ className: `${linkCls} ${activeCls}` }}
-    >
-      {isArabic ? "⚙️ الإدارة" : "⚙️ Admin"}
-    </Link>
-  </>
-)}
+              <Link
+                to="/admin"
+                className={`${linkCls} border border-gold/60 bg-gold/10 text-gold hover:bg-gold hover:text-white`}
+                activeProps={{ className: `${linkCls} ${activeCls}` }}
+              >
+                {isArabic ? "⚙️ الإدارة" : "⚙️ Admin"}
+              </Link>
+            </>
+          )}
 
           <div className="mr-2 flex items-center gap-2 ps-2">
             <button
@@ -257,21 +239,18 @@ const isArabic = language === "ar";
               className="rounded-lg border border-gold/60 bg-gold/10 px-3 py-1.5 text-xs font-bold text-gold transition hover:bg-gold hover:text-white"
             >
               🌐 {isArabic ? "English" : "العربية"}
-              </button>
+            </button>
             <NewLessonButton variant="header" />
             {identity && (
-  <button
-    onClick={() => void signOutAndRedirect()}
-    title={`${identity.name} — ${ROLE_LABEL[identity.role]}`}
-    className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
-  >
-    {isArabic ? "خروج" : "Sign Out"}
-  </button>
-)}
+              <button
+                onClick={() => void signOutAndRedirect()}
+                title={`${identity.name} — ${ROLE_LABEL[identity.role]}`}
+                className="rounded-lg border px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-accent"
+              >
+                {isArabic ? "خروج" : "Sign Out"}
+              </button>
+            )}
           </div>
-
-
-
         </div>
       </div>
     </nav>
@@ -291,9 +270,7 @@ function Footer() {
             draggable={false}
           />
         )}
-        <span>
-          {COMPANY_AR} · المدرسة الرمز · التعلم العميق
-        </span>
+        <span>{COMPANY_AR} · المدرسة الرمز · التعلم العميق</span>
       </div>
       <div
         className="px-4 pb-5 pt-2 text-center"
@@ -303,7 +280,6 @@ function Footer() {
         Designed &amp; Developed by Zaid Idris
       </div>
     </footer>
-
   );
 }
 
@@ -348,10 +324,7 @@ function AppLayout() {
   const { dir } = useUiLanguage();
 
   return (
-    <div
-      className="flex min-h-screen flex-col"
-      dir={dir}
-    >
+    <div className="flex min-h-screen flex-col" dir={dir}>
       <Header />
 
       <div className="flex-1">
@@ -362,11 +335,7 @@ function AppLayout() {
 
       <Footer />
 
-      <Toaster
-        richColors
-        position="top-center"
-        dir={dir}
-      />
+      <Toaster richColors position="top-center" dir={dir} />
     </div>
   );
 }

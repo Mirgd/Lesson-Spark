@@ -1,4 +1,5 @@
 // مسح كامل لحالة الدرس: المقرر، الصور، الشرائح، ورقة العمل، بنك الأسئلة، واجب الغائب.
+import { clearCurriculumFilePath } from "@/lib/plans-db";
 import { clearPageImages, PRESENTATION_KEY, EXEC_PHASE_KEY } from "./presentation";
 import { setLastPdfFile, FILE_ID_KEY, FILE_NAME_KEY } from "./pdf-images";
 import { WORKSHEET_KEY, WORKSHEET_ANSWERS_KEY, WORKSHEET_FEEDBACK_KEY } from "./worksheet";
@@ -39,6 +40,7 @@ export async function clearFileArtifacts(): Promise<void> {
       console.error(e);
     }
   }
+  clearCurriculumFilePath();
   window.dispatchEvent(new Event("rz-presentation"));
   window.dispatchEvent(new Event("rz-worksheet"));
   window.dispatchEvent(new Event("rz-question-bank"));

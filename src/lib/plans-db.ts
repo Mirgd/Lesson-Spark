@@ -11,36 +11,21 @@ import {
 
 import { normalizeLang } from "@/lib/lang";
 
-import {
-  loadBank,
-  QUESTION_BANK_KEY,
-  type BankQuestion,
-} from "@/lib/question-bank";
+import { loadBank, QUESTION_BANK_KEY, type BankQuestion } from "@/lib/question-bank";
 
-import {
-  loadWorksheet,
-  WORKSHEET_KEY,
-  type WorksheetItem,
-} from "@/lib/worksheet";
+import { loadWorksheet, WORKSHEET_KEY, type WorksheetItem } from "@/lib/worksheet";
 
-import {
-  loadSlides,
-  PRESENTATION_KEY,
-  type Slide,
-} from "@/lib/presentation";
+import { loadSlides, PRESENTATION_KEY, type Slide } from "@/lib/presentation";
 
 import { getLastPdfFile } from "@/lib/pdf-images";
 
-import {
-  uploadLessonPdf,
-} from "@/lib/lesson-files";
+import { uploadLessonPdf } from "@/lib/lesson-files";
 
 /**
  * نحفظ مسار PDF الخاص بالخطة محلياً أيضاً
  * حتى لا نفقده عند فتح درس محفوظ ثم حفظه مرة أخرى.
  */
-const CURRICULUM_FILE_PATH_KEY =
-  "rz_curriculum_file_path";
+const CURRICULUM_FILE_PATH_KEY = "rz_curriculum_file_path";
 
 /* =========================================================
    TYPES
@@ -59,6 +44,10 @@ export interface PlanRow {
   subject: string | null;
   grade: string | null;
   topic: string | null;
+
+  class_id: string | null;
+  scheduled_date: string | null;
+  scheduled_time: string | null;
 
   unit: string | null;
   date: string | null;
@@ -154,39 +143,36 @@ function loadCurriculumFilePath(): string | null {
   }
 
   try {
-    return (
-      localStorage.getItem(
-        CURRICULUM_FILE_PATH_KEY,
-      ) || null
-    );
+    return localStorage.getItem(CURRICULUM_FILE_PATH_KEY) || null;
   } catch {
     return null;
   }
 }
 
-function saveCurriculumFilePath(
-  path: string | null | undefined,
-) {
+function saveCurriculumFilePath(path: string | null | undefined) {
   if (typeof window === "undefined") {
     return;
   }
 
   try {
     if (path) {
-      localStorage.setItem(
-        CURRICULUM_FILE_PATH_KEY,
-        path,
-      );
+      localStorage.setItem(CURRICULUM_FILE_PATH_KEY, path);
     } else {
-      localStorage.removeItem(
-        CURRICULUM_FILE_PATH_KEY,
-      );
+      localStorage.removeItem(CURRICULUM_FILE_PATH_KEY);
     }
   } catch (error) {
-    console.error(
-      "Unable to save curriculum file path:",
-      error,
-    );
+    console.error("Unable to save curriculum file path:", error);
+  }
+}
+export function clearCurriculumFilePath() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    localStorage.removeItem(CURRICULUM_FILE_PATH_KEY);
+  } catch (error) {
+    console.error("Unable to clear curriculum file path:", error);
   }
 }
 
@@ -194,9 +180,7 @@ function saveCurriculumFilePath(
    CURRENT BUNDLE
 ========================================================= */
 
-export function currentBundle(
-  plan: LessonPlan,
-): PlanBundle {
+export function currentBundle(plan: LessonPlan): PlanBundle {
   return {
     plan,
 
@@ -206,8 +190,7 @@ export function currentBundle(
 
     slides: loadSlides(),
 
-    curriculumFilePath:
-      loadCurriculumFilePath(),
+    curriculumFilePath: loadCurriculumFilePath(),
   };
 }
 
@@ -219,13 +202,10 @@ export function currentBundle(
  * معرّف المستخدم المسجّل حالياً.
  */
 async function requireUserId(): Promise<string> {
-  const { data, error } =
-    await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
 
   if (error || !data.user) {
-    throw new Error(
-      "يجب تسجيل الدخول لحفظ الخطة",
-    );
+    throw new Error("يجب تسجيل الدخول لحفظ الخطة");
   }
 
   return data.user.id;
@@ -235,71 +215,53 @@ async function requireUserId(): Promise<string> {
    PLAN -> DATABASE ROW
 ========================================================= */
 
-export function planToRow(
-  bundle: PlanBundle,
-  userId: string,
-) {
+export function planToRow(bundle: PlanBundle, userId: string) {
   const { plan } = bundle;
 
-  const pct = Math.round(
-    completionRatio(plan) * 100,
-  );
+  const pct = Math.round(completionRatio(plan) * 100);
 
   return {
     user_id: userId,
 
     local_id: plan.id,
 
-    subject:
-      plan.subject || null,
+    subject: plan.subject || null,
 
-    grade:
-      plan.grade || null,
+    grade: plan.grade || null,
 
-    topic:
-      plan.topic || null,
+    topic: plan.topic || null,
 
-    objectives:
-      plan.objectives || null,
+    class_id: plan.classId || null,
 
-    content_language:
-      planLang(plan),
+    scheduled_date: plan.scheduledDate || null,
 
-    outcomes:
-      (plan.outcomes ?? []) as unknown as Json,
+    objectives: plan.objectives || null,
 
-    phases:
-      plan.phases as unknown as Json,
+    content_language: planLang(plan),
 
-    homework:
-      plan.homework as unknown as Json,
+    outcomes: (plan.outcomes ?? []) as unknown as Json,
 
-    question_bank:
-      bundle.questionBank as unknown as Json,
+    phases: plan.phases as unknown as Json,
 
-    worksheet:
-      bundle.worksheet as unknown as Json,
+    homework: plan.homework as unknown as Json,
 
-    presentation_slides:
-      bundle.slides as unknown as Json,
+    question_bank: bundle.questionBank as unknown as Json,
+
+    worksheet: bundle.worksheet as unknown as Json,
+
+    presentation_slides: bundle.slides as unknown as Json,
 
     /**
      * مهم:
      * مسار PDF المخزّن في Storage.
      */
-    curriculum_file_path:
-      bundle.curriculumFilePath ??
-      null,
+    curriculum_file_path: bundle.curriculumFilePath ?? null,
 
     completion_pct: pct,
 
-    status:
-      pct >= 100
-        ? "complete"
-        : "draft",
+    status: pct >= 100 ? "complete" : "draft",
 
-    updated_at:
-      new Date().toISOString(),
+    updated_at: new Date().toISOString(),
   };
 }
 
@@ -307,9 +269,7 @@ export function planToRow(
    DATABASE ROW -> BUNDLE
 ========================================================= */
 
-export function rowToBundle(
-  row: PlanRow | OpenPlanRow,
-): PlanBundle {
+export function rowToBundle(row: PlanRow | OpenPlanRow): PlanBundle {
   const base = emptyPlan();
 
   /**
@@ -317,73 +277,53 @@ export function rowToBundle(
    * لذلك نفحص وجوده أولاً.
    */
   const curriculumFilePath =
-    "curriculum_file_path" in row
-      ? row.curriculum_file_path ?? null
-      : null;
+    "curriculum_file_path" in row ? (row.curriculum_file_path ?? null) : null;
 
   return {
     plan: {
       ...base,
 
-      id:
-        row.local_id ??
-        row.id,
+      id: row.local_id ?? row.id,
 
-      createdAt:
-        row.created_at,
+      createdAt: row.created_at,
 
-      subject:
-        row.subject ?? "",
+      subject: row.subject ?? "",
 
-      grade:
-        row.grade ?? "",
+grade: row.grade ?? "",
 
-      topic:
-        row.topic ?? "",
+topic: row.topic ?? "",
 
-      objectives:
-        row.objectives ?? "",
+classId:
+  "class_id" in row
+    ? row.class_id ?? ""
+    : "",
 
-      contentLanguage:
-        normalizeLang(
-          (
-            row as {
-              content_language?: unknown;
-            }
-          ).content_language,
-        ),
+scheduledDate:
+  "scheduled_date" in row
+    ? row.scheduled_date ?? ""
+    : "",
 
-      outcomes:
-        Array.isArray(row.outcomes)
-          ? (row.outcomes as string[])
-          : [],
+objectives: row.objectives ?? "",
+      contentLanguage: normalizeLang(
+        (
+          row as {
+            content_language?: unknown;
+          }
+        ).content_language,
+      ),
 
-      phases:
-        Array.isArray(row.phases)
-          ? (row.phases as PhaseData[])
-          : base.phases,
+      outcomes: Array.isArray(row.outcomes) ? (row.outcomes as string[]) : [],
 
-      homework:
-        (row.homework as LessonPlan["homework"]) ??
-        base.homework,
+      phases: Array.isArray(row.phases) ? (row.phases as PhaseData[]) : base.phases,
+
+      homework: (row.homework as LessonPlan["homework"]) ?? base.homework,
     },
 
-    questionBank:
-      Array.isArray(row.question_bank)
-        ? (row.question_bank as BankQuestion[])
-        : [],
+    questionBank: Array.isArray(row.question_bank) ? (row.question_bank as BankQuestion[]) : [],
 
-    worksheet:
-      Array.isArray(row.worksheet)
-        ? (row.worksheet as WorksheetItem[])
-        : [],
+    worksheet: Array.isArray(row.worksheet) ? (row.worksheet as WorksheetItem[]) : [],
 
-    slides:
-      Array.isArray(
-        row.presentation_slides,
-      )
-        ? (row.presentation_slides as Slide[])
-        : [],
+    slides: Array.isArray(row.presentation_slides) ? (row.presentation_slides as Slide[]) : [],
 
     curriculumFilePath,
   };
@@ -397,41 +337,19 @@ export function rowToBundle(
  * يفتح خطة من قاعدة البيانات
  * داخل مساحة العمل المحلية.
  */
-export function applyBundleLocally(
-  bundle: PlanBundle,
-) {
-  localStorage.setItem(
-    "rz_current",
-    JSON.stringify(bundle.plan),
-  );
+export function applyBundleLocally(bundle: PlanBundle) {
+  localStorage.setItem("rz_current", JSON.stringify(bundle.plan));
 
-  localStorage.setItem(
-    QUESTION_BANK_KEY,
-    JSON.stringify(
-      bundle.questionBank,
-    ),
-  );
+  localStorage.setItem(QUESTION_BANK_KEY, JSON.stringify(bundle.questionBank));
 
-  localStorage.setItem(
-    WORKSHEET_KEY,
-    JSON.stringify(
-      bundle.worksheet,
-    ),
-  );
+  localStorage.setItem(WORKSHEET_KEY, JSON.stringify(bundle.worksheet));
 
-  localStorage.setItem(
-    PRESENTATION_KEY,
-    JSON.stringify(
-      bundle.slides,
-    ),
-  );
+  localStorage.setItem(PRESENTATION_KEY, JSON.stringify(bundle.slides));
 
   /**
    * نحفظ مسار PDF أيضاً.
    */
-  saveCurriculumFilePath(
-    bundle.curriculumFilePath,
-  );
+  saveCurriculumFilePath(bundle.curriculumFilePath);
 }
 
 /* =========================================================
@@ -451,36 +369,24 @@ export function applyBundleLocally(
  * إذا لم يكن هناك PDF حالي:
  * نحافظ على المسار القديم الموجود في bundle.
  */
-export async function upsertPlan(
-  bundle: PlanBundle,
-) {
-  const userId =
-    await requireUserId();
+export async function upsertPlan(bundle: PlanBundle) {
+  const userId = await requireUserId();
 
-  let curriculumFilePath =
-    bundle.curriculumFilePath ??
-    loadCurriculumFilePath();
+  let curriculumFilePath = bundle.curriculumFilePath ?? loadCurriculumFilePath();
 
   /**
    * الـPDF الحالي الموجود في ذاكرة التطبيق.
    */
-  const pdfFile =
-    getLastPdfFile();
+  const pdfFile = getLastPdfFile();
 
   if (pdfFile) {
-    curriculumFilePath =
-      await uploadLessonPdf(
-        bundle.plan.id,
-        pdfFile,
-      );
+    curriculumFilePath = await uploadLessonPdf(bundle.plan.id, pdfFile);
 
     /**
      * نحفظ المسار محلياً أيضاً
      * حتى يبقى عند أي Save لاحق.
      */
-    saveCurriculumFilePath(
-      curriculumFilePath,
-    );
+    saveCurriculumFilePath(curriculumFilePath);
   }
 
   const row = {
@@ -492,8 +398,7 @@ export async function upsertPlan(
       userId,
     ),
 
-    curriculum_file_path:
-      curriculumFilePath,
+    curriculum_file_path: curriculumFilePath,
   };
 
   /**
@@ -505,16 +410,9 @@ export async function upsertPlan(
    * لذلك نستخدم cast مؤقتاً هنا.
    * بعد regenerate للـtypes يمكن إزالته.
    */
-  const { error } =
-    await supabase
-      .from("lesson_plans")
-      .upsert(
-        row as any,
-        {
-          onConflict:
-            "user_id,local_id",
-        },
-      );
+  const { error } = await supabase.from("lesson_plans").upsert(row as any, {
+    onConflict: "user_id,local_id",
+  });
 
   if (error) {
     throw error;
@@ -529,31 +427,21 @@ export async function upsertPlan(
  * خطط المستخدم المسجّل فقط.
  */
 export async function listPlans() {
-  const userId =
-    await requireUserId();
+  const userId = await requireUserId();
 
-  const { data, error } =
-    await supabase
-      .from("lesson_plans")
-      .select("*")
-      .eq(
-        "user_id",
-        userId,
-      )
-      .order(
-        "updated_at",
-        {
-          ascending: false,
-        },
-      );
+  const { data, error } = await supabase
+    .from("lesson_plans")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", {
+      ascending: false,
+    });
 
   if (error) {
     throw error;
   }
 
-  return (
-    data ?? []
-  ) as unknown as PlanRow[];
+  return (data ?? []) as unknown as PlanRow[];
 }
 
 /* =========================================================
@@ -564,57 +452,31 @@ export async function listPlans() {
  * جلب خطة واحدة بمعرّفها
  * مع تقييد الملكية.
  */
-export async function getPlan(
-  id: string,
-) {
-  const userId =
-    await requireUserId();
+export async function getPlan(id: string) {
+  const userId = await requireUserId();
 
-  const { data, error } =
-    await supabase
-      .from("lesson_plans")
-      .select("*")
-      .eq(
-        "id",
-        id,
-      )
-      .eq(
-        "user_id",
-        userId,
-      )
-      .maybeSingle();
+  const { data, error } = await supabase
+    .from("lesson_plans")
+    .select("*")
+    .eq("id", id)
+    .eq("user_id", userId)
+    .maybeSingle();
 
   if (error) {
     throw error;
   }
 
-  return (
-    data as unknown as PlanRow | null
-  ) ?? null;
+  return (data as unknown as PlanRow | null) ?? null;
 }
 
 /* =========================================================
    DELETE PLAN
 ========================================================= */
 
-export async function deletePlan(
-  id: string,
-) {
-  const userId =
-    await requireUserId();
+export async function deletePlan(id: string) {
+  const userId = await requireUserId();
 
-  const { error } =
-    await supabase
-      .from("lesson_plans")
-      .delete()
-      .eq(
-        "id",
-        id,
-      )
-      .eq(
-        "user_id",
-        userId,
-      );
+  const { error } = await supabase.from("lesson_plans").delete().eq("id", id).eq("user_id", userId);
 
   if (error) {
     throw error;
@@ -627,36 +489,29 @@ export async function deletePlan(
 
 export async function duplicatePlan(
   id: string,
+  newClassId?: string,
+  newScheduledDate?: string,
 ) {
-  const row =
-    await getPlan(id);
+  const row = await getPlan(id);
 
   if (!row) {
-    throw new Error(
-      "لم يتم العثور على الخطة",
-    );
+    throw new Error("لم يتم العثور على الخطة");
   }
 
-  const bundle =
-    rowToBundle(row);
+  const bundle = rowToBundle(row);
 
   bundle.plan = {
     ...bundle.plan,
 
-    id:
-      crypto.randomUUID(),
+    id: crypto.randomUUID(),
 
-    topic:
-      `${bundle.plan.topic} (نسخة)`,
+    topic: `${bundle.plan.topic} (نسخة)`,
+
+    classId: newClassId || "",
+
+    scheduledDate: newScheduledDate || "",
   };
 
-  /**
-   * حالياً النسخة تشير إلى نفس PDF
-   * إذا لم يكن هناك ملف حي في الذاكرة.
-   *
-   * وهذا مقبول لأن الملف نفسه
-   * ملك لنفس المستخدم.
-   */
   await upsertPlan(bundle);
 }
 
@@ -668,53 +523,32 @@ export async function duplicatePlan(
  * الخطط القديمة المفتوحة.
  * تقرأ فقط مؤقتاً في الإشراف والإدارة.
  */
-export async function listOpenPlans(
-  teacherName?: string,
-) {
-  let q = supabase
-    .from("open_plans")
-    .select("*")
-    .order(
-      "updated_at",
-      {
-        ascending: false,
-      },
-    );
+export async function listOpenPlans(teacherName?: string) {
+  let q = supabase.from("open_plans").select("*").order("updated_at", {
+    ascending: false,
+  });
 
   if (teacherName) {
-    q = q.eq(
-      "teacher_name",
-      teacherName,
-    );
+    q = q.eq("teacher_name", teacherName);
   }
 
-  const { data, error } =
-    await q;
+  const { data, error } = await q;
 
   if (error) {
     throw error;
   }
 
-  return (
-    data ?? []
-  ) as unknown as OpenPlanRow[];
+  return (data ?? []) as unknown as OpenPlanRow[];
 }
 
 /* =========================================================
    RELATIVE TIME
 ========================================================= */
 
-export function relativeTime(
-  iso: string,
-): string {
-  const diff =
-    Date.now() -
-    new Date(iso).getTime();
+export function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
 
-  const m =
-    Math.round(
-      diff / 60000,
-    );
+  const m = Math.round(diff / 60000);
 
   if (m < 1) {
     return "الآن";
@@ -724,19 +558,13 @@ export function relativeTime(
     return `منذ ${m} دقيقة`;
   }
 
-  const h =
-    Math.round(
-      m / 60,
-    );
+  const h = Math.round(m / 60);
 
   if (h < 24) {
     return `منذ ${h} ساعة`;
   }
 
-  const d =
-    Math.round(
-      h / 24,
-    );
+  const d = Math.round(h / 24);
 
   if (d === 1) {
     return "أمس";
@@ -746,7 +574,5 @@ export function relativeTime(
     return `منذ ${d} يوم`;
   }
 
-  return new Date(
-    iso,
-  ).toLocaleDateString("ar");
+  return new Date(iso).toLocaleDateString("ar");
 }

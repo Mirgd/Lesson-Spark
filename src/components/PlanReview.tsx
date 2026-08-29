@@ -31,15 +31,11 @@ export default function PlanReview({
     try {
       const all = await listPlanReviews();
 
-      const list = all.filter(
-        (r) => r.plan_id === planId
-      );
+      const list = all.filter((r) => r.plan_id === planId);
 
       setRows(list);
 
-      const mine = list.find(
-        (r) => r.reviewer_id === reviewerId
-      );
+      const mine = list.find((r) => r.reviewer_id === reviewerId);
 
       if (mine) {
         setRating(mine.rating);
@@ -72,21 +68,13 @@ export default function PlanReview({
 
   const save = async () => {
     if (!rating) {
-      toast.error(
-        isArabic
-          ? "اختر درجة التقييم أولاً"
-          : "Select a rating first"
-      );
+      toast.error(isArabic ? "اختر درجة التقييم أولاً" : "Select a rating first");
 
       return;
     }
 
     if (!reviewerId) {
-      toast.error(
-        isArabic
-          ? "سجّل الدخول أولاً"
-          : "Please sign in first"
-      );
+      toast.error(isArabic ? "سجّل الدخول أولاً" : "Please sign in first");
 
       return;
     }
@@ -101,11 +89,7 @@ export default function PlanReview({
         comment,
       });
 
-      toast.success(
-        isArabic
-          ? "تم حفظ التقييم"
-          : "Review saved successfully"
-      );
+      toast.success(isArabic ? "تم حفظ التقييم" : "Review saved successfully");
 
       await load();
       onSaved?.();
@@ -115,7 +99,7 @@ export default function PlanReview({
           ? e.message
           : isArabic
             ? "تعذّر حفظ التقييم"
-            : "Unable to save the review"
+            : "Unable to save the review",
       );
     } finally {
       setSaving(false);
@@ -123,22 +107,16 @@ export default function PlanReview({
   };
 
   if (busy) {
-    return (
-      <Loader2 className="mt-3 h-4 w-4 animate-spin text-primary" />
-    );
+    return <Loader2 className="mt-3 h-4 w-4 animate-spin text-primary" />;
   }
 
-  const others = rows.filter(
-    (r) => r.reviewer_id !== reviewerId
-  );
+  const others = rows.filter((r) => r.reviewer_id !== reviewerId);
 
   return (
     <div className="mt-3 border-t pt-3">
       <div className="mb-2 flex items-center gap-2">
         <span className="text-xs font-bold text-primary">
-          {isArabic
-            ? "تقييم الخطة"
-            : "Plan Review"}
+          {isArabic ? "تقييم الخطة" : "Plan Review"}
         </span>
 
         <div className="flex gap-0.5">
@@ -148,17 +126,11 @@ export default function PlanReview({
               type="button"
               onClick={() => setRating(n)}
               title={`${n}/5`}
-              aria-label={
-                isArabic
-                  ? `تقييم ${n} من 5`
-                  : `Rate ${n} out of 5`
-              }
+              aria-label={isArabic ? `تقييم ${n} من 5` : `Rate ${n} out of 5`}
             >
               <Star
                 className={`h-4 w-4 ${
-                  n <= rating
-                    ? "fill-gold text-gold"
-                    : "text-muted-foreground"
+                  n <= rating ? "fill-gold text-gold" : "text-muted-foreground"
                 }`}
               />
             </button>
@@ -168,15 +140,9 @@ export default function PlanReview({
 
       <textarea
         value={comment}
-        onChange={(e) =>
-          setComment(e.target.value)
-        }
+        onChange={(e) => setComment(e.target.value)}
         rows={2}
-        placeholder={
-          isArabic
-            ? "ملاحظة لصاحب الخطة..."
-            : "Add a note for the plan owner..."
-        }
+        placeholder={isArabic ? "ملاحظة لصاحب الخطة..." : "Add a note for the plan owner..."}
         className="w-full rounded-lg border bg-background p-2 text-xs"
       />
 
@@ -198,16 +164,8 @@ export default function PlanReview({
         <ul className="mt-3 space-y-1 text-[11px] text-muted-foreground">
           {others.map((r) => (
             <li key={r.id}>
-              ★ {r.rating}/5 —{" "}
-              {r.comment ||
-                (isArabic
-                  ? "بدون ملاحظة"
-                  : "No comment")}{" "}
-              (
-              {isArabic
-                ? "تقييم مشرف/ة آخر"
-                : "Another supervisor's review"}
-              )
+              ★ {r.rating}/5 — {r.comment || (isArabic ? "بدون ملاحظة" : "No comment")} (
+              {isArabic ? "تقييم مشرف/ة آخر" : "Another supervisor's review"})
             </li>
           ))}
         </ul>

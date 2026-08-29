@@ -1,5 +1,5 @@
 import { setResponseStatus } from "@tanstack/react-start/server";
-import { generateText, type ModelMessage } from "ai"; 
+import { generateText, type ModelMessage } from "ai";
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible";
 
 import { encodeAiError } from "@/lib/ai-error";
@@ -10,7 +10,6 @@ export interface AiCallOptions {
   maxTokens?: number;
   label?: string;
 }
-
 
 function messageFor(status: number, body: string): string {
   if (status === 401 || status === 403) return "مفتاح الذكاء الاصطناعي مرفوض من الخدمة.";
@@ -24,7 +23,10 @@ function messageFor(status: number, body: string): string {
 
 function statusFrom(error: unknown): number {
   if (!error || typeof error !== "object") return 502;
-  const value = Number((error as { statusCode?: unknown; status?: unknown }).statusCode ?? (error as { status?: unknown }).status);
+  const value = Number(
+    (error as { statusCode?: unknown; status?: unknown }).statusCode ??
+      (error as { status?: unknown }).status,
+  );
   return Number.isInteger(value) && value >= 400 && value <= 599 ? value : 502;
 }
 
@@ -48,7 +50,8 @@ function normalize(messages: unknown[]): { instructions: string; messages: Model
     if (Array.isArray(content)) {
       content = content.map((part) => {
         const p = part as { type?: string; image_url?: { url?: string }; text?: string };
-        if (p.type === "image_url" && p.image_url?.url) return { type: "image", image: p.image_url.url };
+        if (p.type === "image_url" && p.image_url?.url)
+          return { type: "image", image: p.image_url.url };
         return part;
       });
     }
@@ -63,12 +66,18 @@ function toAnthropicContent(content: unknown): unknown {
   if (typeof content === "string") return content;
   if (!Array.isArray(content)) return String(content ?? "");
   return content.map((part) => {
-    const p = part as { type?: string; text?: string; image?: unknown; image_url?: { url?: string } };
+    const p = part as {
+      type?: string;
+      text?: string;
+      image?: unknown;
+      image_url?: { url?: string };
+    };
     if (p.type === "text") return { type: "text", text: p.text ?? "" };
     const url = p.image_url?.url ?? (typeof p.image === "string" ? p.image : undefined);
     if (url) {
       const match = /^data:([^;]+);base64,(.+)$/.exec(url);
-      if (match) return { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } };
+      if (match)
+        return { type: "image", source: { type: "base64", media_type: match[1], data: match[2] } };
       return { type: "image", source: { type: "url", url } };
     }
     return { type: "text", text: p.text ?? "" };
@@ -95,9 +104,7 @@ function toGeminiParts(content: unknown): unknown[] {
       return { text: p.text ?? "" };
     }
 
-    const url =
-      p.image_url?.url ??
-      (typeof p.image === "string" ? p.image : undefined);
+    const url = p.image_url?.url ?? (typeof p.image === "string" ? p.image : undefined);
 
     if (url) {
       const match = /^data:([^;]+);base64,(.+)$/.exec(url);
@@ -139,15 +146,10 @@ async function waitForGeminiSlot(): Promise<void> {
 
   const now = Date.now();
 
-  const waitMs = Math.max(
-    0,
-    GEMINI_MIN_INTERVAL_MS - (now - lastGeminiRequestAt)
-  );
+  const waitMs = Math.max(0, GEMINI_MIN_INTERVAL_MS - (now - lastGeminiRequestAt));
 
   if (waitMs > 0) {
-    console.log(
-      `Gemini rate limiter: waiting ${waitMs}ms before next request.`
-    );
+    console.log(`Gemini rate limiter: waiting ${waitMs}ms before next request.`);
 
     await new Promise((resolve) => setTimeout(resolve, waitMs));
   }
@@ -156,23 +158,17 @@ async function waitForGeminiSlot(): Promise<void> {
 
   release();
 }
-async function callGemini(
-  key: string,
-  opts: AiCallOptions
-): Promise<string> {
+async function callGemini(key: string, opts: AiCallOptions): Promise<string> {
   const { instructions, messages } = normalize(opts.messages);
 
-  const model =
-    process.env["GEMINI_MODEL"]?.trim() ||
-    "gemini-3.5-flash-lite";
+  const model = process.env["GEMINI_MODEL"]?.trim() || "gemini-3.5-flash-lite";
 
   const contents = messages.map((m) => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: toGeminiParts(m.content),
   }));
 
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
   const body = JSON.stringify({
     ...(instructions
@@ -188,8 +184,7 @@ async function callGemini(
     },
   });
 
-  const sleep = (ms: number) =>
-    new Promise<void>((resolve) => setTimeout(resolve, ms));
+  const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
   const maxAttempts = 2;
 
@@ -201,7 +196,7 @@ async function callGemini(
 
       // Usage tracing — does not expose prompts or API keys
       console.log(
-        `[Gemini request] label=${opts.label ?? "unknown"} model=${model} attempt=${attempt}`
+        `[Gemini request] label=${opts.label ?? "unknown"} model=${model} attempt=${attempt}`,
       );
 
       res = await fetch(url, {
@@ -218,16 +213,9 @@ async function callGemini(
         continue;
       }
 
-      const detail =
-        error instanceof Error
-          ? error.message
-          : String(error);
+      const detail = error instanceof Error ? error.message : String(error);
 
-      return fail(
-        502,
-        "تعذّر الاتصال بخدمة الذكاء الاصطناعي.",
-        detail
-      );
+      return fail(502, "تعذّر الاتصال بخدمة الذكاء الاصطناعي.", detail);
     }
 
     // نجاح الطلب
@@ -247,11 +235,7 @@ async function callGemini(
           .trim() ?? "";
 
       if (!text) {
-        return fail(
-          502,
-          "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.",
-          "Empty Gemini response"
-        );
+        return fail(502, "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.", "Empty Gemini response");
       }
 
       return text;
@@ -262,59 +246,37 @@ async function callGemini(
 
     // لا نعيد المحاولة على 429 حتى لا نستهلك quota إضافية
     const retryable =
-      res.status === 500 ||
-      res.status === 502 ||
-      res.status === 503 ||
-      res.status === 504;
+      res.status === 500 || res.status === 502 || res.status === 503 || res.status === 504;
 
     if (retryable && attempt < maxAttempts) {
       const retryAfter = res.headers.get("retry-after");
 
       const retryAfterHeaderMs =
-        retryAfter && !Number.isNaN(Number(retryAfter))
-          ? Number(retryAfter) * 1000
-          : 0;
+        retryAfter && !Number.isNaN(Number(retryAfter)) ? Number(retryAfter) * 1000 : 0;
 
-      const retryMatch = detail.match(
-        /please retry in\s+([\d.]+)s/i
-      );
+      const retryMatch = detail.match(/please retry in\s+([\d.]+)s/i);
 
-      const retryAfterBodyMs = retryMatch
-        ? Math.ceil(Number(retryMatch[1]) * 1000)
-        : 0;
+      const retryAfterBodyMs = retryMatch ? Math.ceil(Number(retryMatch[1]) * 1000) : 0;
 
       const fallbackDelay = 15000;
 
-      const delay =
-        Math.max(
-          retryAfterHeaderMs,
-          retryAfterBodyMs,
-          fallbackDelay
-        ) + 1000;
+      const delay = Math.max(retryAfterHeaderMs, retryAfterBodyMs, fallbackDelay) + 1000;
 
       console.warn(
         `Gemini returned ${res.status}. Retrying attempt ${
           attempt + 1
         }/${maxAttempts} after ${delay}ms.`,
-        detail
+        detail,
       );
 
       await sleep(delay);
       continue;
     }
 
-    return fail(
-      res.status,
-      messageFor(res.status, detail),
-      detail
-    );
+    return fail(res.status, messageFor(res.status, detail), detail);
   }
 
-  return fail(
-    502,
-    "تعذّر الاتصال بخدمة الذكاء الاصطناعي.",
-    "Gemini retries exhausted"
-  );
+  return fail(502, "تعذّر الاتصال بخدمة الذكاء الاصطناعي.", "Gemini retries exhausted");
 }
 /** نداء مباشر لـ Anthropic — نفس الطلب الذي ينجح في /api/public/health?probe=1 */
 async function callAnthropic(key: string, opts: AiCallOptions): Promise<string> {
@@ -340,7 +302,11 @@ async function callAnthropic(key: string, opts: AiCallOptions): Promise<string> 
   }
 
   const json = (await res.json()) as { content?: { type?: string; text?: string }[] };
-  const text = (json.content ?? []).filter((p) => p.type === "text").map((p) => p.text ?? "").join("").trim();
+  const text = (json.content ?? [])
+    .filter((p) => p.type === "text")
+    .map((p) => p.text ?? "")
+    .join("")
+    .trim();
   if (!text) fail(502, "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.", "Empty AI response");
   return text;
 }
@@ -348,11 +314,7 @@ async function callAnthropic(key: string, opts: AiCallOptions): Promise<string> 
 function lovableModel(requested?: string) {
   const lovableKey = process.env["LOVABLE_API_KEY"];
   if (!lovableKey)
-    fail(
-      503,
-      "خدمة الذكاء الاصطناعي غير مفعّلة على الخادم.",
-      "Missing AI provider configuration",
-    );
+    fail(503, "خدمة الذكاء الاصطناعي غير مفعّلة على الخادم.", "Missing AI provider configuration");
 
   const provider = createOpenAICompatible({
     name: "lovable",
@@ -363,9 +325,7 @@ function lovableModel(requested?: string) {
 }
 
 export async function callAiGateway(opts: AiCallOptions): Promise<string> {
-  const geminiKey = process.env["GEMINI_API_KEY"]
-    ?.trim()
-    .replace(/^["']|["']$/g, "");
+  const geminiKey = process.env["GEMINI_API_KEY"]?.trim().replace(/^["']|["']$/g, "");
 
   // الأولوية لـ Gemini
   if (geminiKey) {
@@ -373,9 +333,7 @@ export async function callAiGateway(opts: AiCallOptions): Promise<string> {
   }
 
   // إذا لم يوجد Gemini، جرّب Anthropic
-  const anthropicKey = process.env["ANTHROPIC_API_KEY"]
-    ?.trim()
-    .replace(/^["']|["']$/g, "");
+  const anthropicKey = process.env["ANTHROPIC_API_KEY"]?.trim().replace(/^["']|["']$/g, "");
 
   if (anthropicKey) {
     return callAnthropic(anthropicKey, opts);
@@ -396,11 +354,7 @@ export async function callAiGateway(opts: AiCallOptions): Promise<string> {
     const content = result.text.trim();
 
     if (!content) {
-      fail(
-        502,
-        "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.",
-        "Empty AI response"
-      );
+      fail(502, "لم تُعد خدمة الذكاء الاصطناعي أي محتوى.", "Empty AI response");
     }
 
     return content;
@@ -410,7 +364,6 @@ export async function callAiGateway(opts: AiCallOptions): Promise<string> {
     fail(status, messageFor(status, detail), detail);
   }
 }
-
 
 export function failParse(raw: string): never {
   fail(502, "تعذّر فهم ناتج الذكاء الاصطناعي. أعد المحاولة.", raw);

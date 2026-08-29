@@ -68,37 +68,23 @@ function WorksheetPage() {
       dir={isArabic ? "rtl" : "ltr"}
       className="mx-auto max-w-3xl bg-white p-8 text-black print:p-0"
     >
-      <header
-        className="mb-6 border-b-2 pb-3"
-        style={{ borderColor: "#B8860B" }}
-      >
-        <h1
-          className="text-2xl font-black"
-          style={{ color: "#1B2A4A" }}
-        >
+      <header className="mb-6 border-b-2 pb-3" style={{ borderColor: "#B8860B" }}>
+        <h1 className="text-2xl font-black" style={{ color: "#1B2A4A" }}>
           {isArabic
             ? `ورقة عمل الطالب — ${plan.topic || "درس اليوم"}`
             : `Student Worksheet — ${plan.topic || "Today's Lesson"}`}
         </h1>
 
         <p className="mt-1 text-sm text-neutral-600">
-          {plan.subject || "—"} · {plan.grade || "—"} ·{" "}
-          {isArabic ? "الاسم:" : "Name:"} ..............................
+          {plan.subject || "—"} · {plan.grade || "—"} · {isArabic ? "الاسم:" : "Name:"}{" "}
+          ..............................
         </p>
       </header>
 
       {plan.outcomes && plan.outcomes.length > 0 && (
-        <section
-          className="mb-6 rounded-lg p-4"
-          style={{ background: "#B8860B14" }}
-        >
-          <h2
-            className="mb-2 text-base font-black"
-            style={{ color: "#1B2A4A" }}
-          >
-            {isArabic
-              ? "ماذا سأتعلم اليوم؟"
-              : "What Will I Learn Today?"}
+        <section className="mb-6 rounded-lg p-4" style={{ background: "#B8860B14" }}>
+          <h2 className="mb-2 text-base font-black" style={{ color: "#1B2A4A" }}>
+            {isArabic ? "ماذا سأتعلم اليوم؟" : "What Will I Learn Today?"}
           </h2>
 
           <ul className="space-y-1 text-sm">
@@ -111,28 +97,18 @@ function WorksheetPage() {
 
       <ol className="space-y-5">
         {items.map((it, i) => (
-          <li
-            key={i}
-            className="break-inside-avoid rounded-lg border p-4"
-          >
+          <li key={i} className="break-inside-avoid rounded-lg border p-4">
             <div className="mb-2 flex items-center gap-2">
               <span
                 className="rounded px-2 py-0.5 text-[11px] font-bold text-white"
                 style={{
-                  background:
-                    PHASE_LABELS[it.phase as keyof typeof PHASE_LABELS]
-                      ?.color ?? "#888",
+                  background: PHASE_LABELS[it.phase as keyof typeof PHASE_LABELS]?.color ?? "#888",
                 }}
               >
-                {phaseName(
-                  it.phase as keyof typeof PHASE_LABELS
-                )}
+                {phaseName(it.phase as keyof typeof PHASE_LABELS)}
               </span>
 
-              <h2
-                className="text-base font-bold"
-                style={{ color: "#1B2A4A" }}
-              >
+              <h2 className="text-base font-bold" style={{ color: "#1B2A4A" }}>
                 {i + 1}. {it.slideTitle}
               </h2>
             </div>
@@ -140,19 +116,14 @@ function WorksheetPage() {
             <ul className="space-y-3">
               {it.questions.filter(Boolean).map((q, qi) => (
                 <li key={qi}>
-                  <div className="text-sm">
-                    • {q}
-                  </div>
+                  <div className="text-sm">• {q}</div>
 
                   <div className="mt-1 border-b border-dashed border-neutral-400" />
                 </li>
               ))}
             </ul>
 
-            <div
-              className="mt-3 rounded p-2 text-sm"
-              style={{ background: "#B8860B18" }}
-            >
+            <div className="mt-3 rounded p-2 text-sm" style={{ background: "#B8860B18" }}>
               ☐ {it.selfCheck}
             </div>
           </li>
@@ -167,31 +138,20 @@ function WorksheetPage() {
             color: "#1B2A4A",
           }}
         >
-          {isArabic
-            ? "مفتاح الإجابات النموذجية (للمعلم)"
-            : "Model Answer Key (Teacher Copy)"}
+          {isArabic ? "مفتاح الإجابات النموذجية (للمعلم)" : "Model Answer Key (Teacher Copy)"}
         </h2>
 
         <ol className="space-y-3">
           {items.map((it, i) => (
-            <li
-              key={i}
-              className="break-inside-avoid text-sm"
-            >
-              <div
-                className="font-bold"
-                style={{ color: "#1B2A4A" }}
-              >
+            <li key={i} className="break-inside-avoid text-sm">
+              <div className="font-bold" style={{ color: "#1B2A4A" }}>
                 {i + 1}. {it.slideTitle}
               </div>
 
               <ul className="mt-1 space-y-1">
                 {it.questions.filter(Boolean).map((q, qi) => (
                   <li key={qi}>
-                    • {q} —{" "}
-                    <span className="font-bold">
-                      {it.answers?.[qi] || "—"}
-                    </span>
+                    • {q} — <span className="font-bold">{it.answers?.[qi] || "—"}</span>
                   </li>
                 ))}
               </ul>

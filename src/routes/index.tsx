@@ -76,13 +76,11 @@ function Landing() {
       <h1 className="text-[32px] font-extrabold leading-[1.2] text-primary md:text-[48px]">
         {isArabic ? (
           <>
-            المدرسة الرمز ·{" "}
-            <span className="text-gold">التعلم العميق</span>
+            المدرسة الرمز · <span className="text-gold">التعلم العميق</span>
           </>
         ) : (
           <>
-            Al-Ramz School ·{" "}
-            <span className="text-gold">Deep Learning</span>
+            Al-Ramz School · <span className="text-gold">Deep Learning</span>
           </>
         )}
       </h1>
@@ -113,11 +111,7 @@ function Landing() {
       <div className="mt-16 grid w-full max-w-3xl grid-cols-1 gap-6 md:grid-cols-3">
         <Step
           icon={<ClipboardList />}
-          title={
-            isArabic
-              ? "تخطيط ذكي وتنفيذ سلس"
-              : "Smart Planning, Smooth Delivery"
-          }
+          title={isArabic ? "تخطيط ذكي وتنفيذ سلس" : "Smart Planning, Smooth Delivery"}
           desc={
             isArabic
               ? "اكتب نشاط المعلم والطالب في بطاقة واحدة"
@@ -127,11 +121,7 @@ function Landing() {
 
         <Step
           icon={<Play />}
-          title={
-            isArabic
-              ? "تنفيذ مركّز"
-              : "Focused Lesson Delivery"
-          }
+          title={isArabic ? "تنفيذ مركّز" : "Focused Lesson Delivery"}
           desc={
             isArabic
               ? "شاشة المعلم واضحة — شاشة الطالب مستقلة للبروجكتور"
@@ -141,11 +131,7 @@ function Landing() {
 
         <Step
           icon={<Sparkles />}
-          title={
-            isArabic
-              ? "ذكاء يقرأ مقررك"
-              : "AI That Reads Your Curriculum"
-          }
+          title={isArabic ? "ذكاء يقرأ مقررك" : "AI That Reads Your Curriculum"}
           desc={
             isArabic
               ? "ارفع PDF/DOCX واحصل على اقتراحات دقيقة"
@@ -156,40 +142,24 @@ function Landing() {
 
       {/* Standards */}
       <div className="mt-16 flex items-center gap-4 text-xs text-muted-foreground">
-        <span className="rounded-full border px-3 py-1">
-          Cognia STEM
-        </span>
+        <span className="rounded-full border px-3 py-1">Cognia STEM</span>
 
-        <span className="rounded-full border px-3 py-1">
-          5E Deep Learning
-        </span>
+        <span className="rounded-full border px-3 py-1">5E Deep Learning</span>
       </div>
     </main>
   );
 }
 
-function Step({
-  icon,
-  title,
-  desc,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  desc: string;
-}) {
+function Step({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (
     <div className="rounded-[20px] border bg-card p-8 text-start shadow-[0_2px_12px_rgba(27,42,74,0.06)] transition-all duration-250 hover:-translate-y-1 hover:border-gold hover:shadow-[0_12px_32px_rgba(27,42,74,0.12)]">
       <div className="mb-4 inline-flex h-11 w-11 items-center justify-center rounded-lg bg-gold/10 text-gold">
         {icon}
       </div>
 
-      <h3 className="text-[18px] font-bold text-primary">
-        {title}
-      </h3>
+      <h3 className="text-[18px] font-bold text-primary">{title}</h3>
 
-      <p className="mt-2 text-[15px] leading-[1.7] text-muted-foreground">
-        {desc}
-      </p>
+      <p className="mt-2 text-[15px] leading-[1.7] text-muted-foreground">{desc}</p>
     </div>
   );
 }

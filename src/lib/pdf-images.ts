@@ -79,8 +79,6 @@ export function useSharedFile(): { file: File | null; name: string; fileId: stri
   return state;
 }
 
-
-
 export interface PageImage {
   page: number;
   /** full data URL */
@@ -98,9 +96,7 @@ export async function extractPdfAsImages(
 
   const pdfjs = await import("pdfjs-dist");
 
-  const workerUrl = (
-    await import("pdfjs-dist/build/pdf.worker.min.mjs?url")
-  ).default;
+  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url")).default;
 
   pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
 
@@ -139,10 +135,7 @@ export async function extractPdfAsImages(
     data: new Uint8Array(arrayBuffer),
   }).promise;
 
-  const total =
-  typeof maxPages === "number"
-    ? Math.min(pdf.numPages, maxPages)
-    : pdf.numPages;
+  const total = typeof maxPages === "number" ? Math.min(pdf.numPages, maxPages) : pdf.numPages;
   const images: PageImage[] = [];
 
   for (let i = 1; i <= total; i++) {
@@ -173,10 +166,7 @@ export async function extractPdfAsImages(
       viewport,
     }).promise;
 
-    const dataUrl = canvas.toDataURL(
-      "image/jpeg",
-      0.65,
-    );
+    const dataUrl = canvas.toDataURL("image/jpeg", 0.65);
 
     const commaIndex = dataUrl.indexOf(",");
 
