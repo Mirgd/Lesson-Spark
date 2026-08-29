@@ -16,7 +16,7 @@ import { useSession } from "@/lib/session";
 import { PHASES, type HomeworkData, type PhaseData } from "@/lib/lesson-types";
 import PlanReview from "@/components/PlanReview";
 import SupervisorOnly from "@/components/SupervisorOnly";
-
+import { supabase } from "@/integrations/supabase/client";
 export const Route = createFileRoute("/supervisor")({
   ssr: false,
   head: () => ({
@@ -59,6 +59,7 @@ function SupervisorPage() {
   const [status, setStatus] = useState("");
   const [tab, setTab] = useState<"all" | "pending" | "mine">("all");
   const [openPlan, setOpenPlan] = useState<SupervisedPlan | null>(null);
+  const [attendancePlan, setAttendancePlan] = useState<SupervisedPlan | null>(null);
 
   const statusLabel = (value: string) => {
     if (value === "complete") {
@@ -435,12 +436,23 @@ function SupervisorPage() {
                     : ""}
                   {isArabic ? "آخر تعديل:" : "Last updated:"} {relativeTime(row.updated_at)}
                 </p>
-                <button
-                  onClick={() => setOpenPlan(row)}
-                  className="mt-3 rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
-                >
-                  {isArabic ? "عرض الخطة كاملة" : "View Full Plan"}
-                </button>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button
+                    onClick={() => setOpenPlan(row)}
+                    className="rounded-lg border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary hover:bg-primary hover:text-primary-foreground"
+                  >
+                    {isArabic ? "عرض الخطة كاملة" : "View Full Plan"}
+                  </button>
+
+                  <button
+                    onClick={() => setAttendancePlan(row)}
+                    className="inline-flex items-center gap-1.5 rounded-lg border border-gold/50 px-3 py-1.5 text-xs font-bold text-gold hover:bg-gold/10"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+
+                    {isArabic ? "الحضور والمتابعة" : "Attendance & Feedback"}
+                  </button>
+                </div>
                 <PlanReview
                   planId={row.id}
                   teacherId={row.user_id}
@@ -459,6 +471,13 @@ function SupervisorPage() {
           onClose={() => setOpenPlan(null)}
         />
       )}
+      {attendancePlan && (
+  <SupervisorAttendanceViewer
+    plan={attendancePlan}
+    teacher={teacherName(attendancePlan.user_id)}
+    onClose={() => setAttendancePlan(null)}
+  />
+)}
     </main>
   );
 }
@@ -633,6 +652,356 @@ function PlanViewer({
         <div className="mt-5 border-t pt-4">
           <PlanReview planId={plan.id} teacherId={plan.user_id} />
         </div>
+      </div>
+    </div>
+  );
+}
+/* =========================================================
+   SUPERVISOR ATTENDANCE VIEWER
+   قراءة فقط
+========================================================= */
+
+type SupervisorAttendanceRow = {
+  id: string;
+  student_id: string;
+  status: string;
+  understanding_level: string | null;
+  feedback: string | null;
+
+  students:
+    | {
+        full_name: string;
+      }
+    | {
+        full_name: string;
+      }[]
+    | null;
+};
+
+function SupervisorAttendanceViewer({
+  plan,
+  teacher,
+  onClose,
+}: {
+  plan: SupervisedPlan;
+  teacher: string;
+  onClose: () => void;
+}) {
+  const { language } = useUiLanguage();
+  const isArabic = language === "ar";
+
+  const [rows, setRows] =
+    useState<SupervisorAttendanceRow[]>([]);
+
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAttendance = async () => {
+      try {
+        setLoading(true);
+
+        const { data, error } = await (supabase as any)
+          .from("lesson_attendance")
+          .select(`
+            id,
+            student_id,
+            status,
+            understanding_level,
+            feedback,
+            students (
+              full_name
+            )
+          `)
+          .eq("lesson_plan_id", plan.id);
+
+        if (error) {
+          throw error;
+        }
+
+        setRows(
+          (data ?? []) as SupervisorAttendanceRow[],
+        );
+      } catch (error) {
+        console.error(
+          "SUPERVISOR ATTENDANCE ERROR:",
+          error,
+        );
+
+        toast.error(
+          isArabic
+            ? "تعذّر تحميل سجل الحضور"
+            : "Unable to load attendance",
+        );
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadAttendance();
+  }, [plan.id, isArabic]);
+
+  const attendanceLabel = (status: string) => {
+    switch (status) {
+      case "present":
+        return isArabic ? "حاضرة" : "Present";
+
+      case "absent":
+        return isArabic ? "غائبة" : "Absent";
+
+      case "late":
+        return isArabic ? "متأخرة" : "Late";
+
+      case "excused":
+        return isArabic ? "غياب بعذر" : "Excused";
+
+      default:
+        return isArabic ? "لم يحدد" : "Not marked";
+    }
+  };
+
+  const understandingLabel = (
+    level: string | null,
+  ) => {
+    switch (level) {
+      case "mastered":
+        return isArabic ? "متمكنة" : "Mastered";
+
+      case "good":
+        return isArabic ? "جيدة" : "Good";
+
+      case "needs_support":
+        return isArabic ? "تحتاج دعم" : "Needs Support";
+
+      case "not_mastered":
+        return isArabic
+          ? "غير متمكنة"
+          : "Not Mastered";
+
+      default:
+        return "—";
+    }
+  };
+
+  const getStudentName = (
+    student:
+      | { full_name: string }
+      | { full_name: string }[]
+      | null,
+  ) => {
+    if (!student) {
+      return isArabic ? "طالبة غير معروفة" : "Unknown student";
+    }
+
+    if (Array.isArray(student)) {
+      return (
+        student[0]?.full_name ||
+        (isArabic ? "طالبة غير معروفة" : "Unknown student")
+      );
+    }
+
+    return student.full_name;
+  };
+
+  const presentCount = rows.filter(
+    (r) => r.status === "present",
+  ).length;
+
+  const absentCount = rows.filter(
+    (r) => r.status === "absent",
+  ).length;
+
+  const lateCount = rows.filter(
+    (r) => r.status === "late",
+  ).length;
+
+  const needsSupportCount = rows.filter(
+    (r) =>
+      r.understanding_level === "needs_support" ||
+      r.understanding_level === "not_mastered",
+  ).length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
+
+      <div
+        className="w-full max-w-5xl rounded-2xl border bg-card p-5 shadow-lg"
+        dir={isArabic ? "rtl" : "ltr"}
+      >
+
+        {/* HEADER */}
+
+        <div className="mb-5 flex items-start justify-between gap-3">
+
+          <div>
+            <p className="text-xs font-bold text-gold">
+              {isArabic
+                ? "الحضور والمتابعة — قراءة فقط"
+                : "Attendance & Feedback — Read Only"}
+            </p>
+
+            <h2 className="mt-1 text-xl font-black text-primary">
+              {plan.topic ||
+                (isArabic
+                  ? "بدون عنوان"
+                  : "Untitled Lesson")}
+            </h2>
+
+            <p className="mt-1 text-xs text-muted-foreground">
+              {teacher}
+              {" · "}
+              {plan.subject || "—"}
+              {" · "}
+              {plan.grade || "—"}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border p-2 text-muted-foreground hover:bg-accent"
+            title={isArabic ? "إغلاق" : "Close"}
+          >
+            <X className="h-4 w-4" />
+          </button>
+
+        </div>
+
+        {/* LOADING */}
+
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        ) : rows.length === 0 ? (
+
+          /* EMPTY */
+
+          <div className="rounded-xl border border-dashed p-8 text-center">
+
+            <Users className="mx-auto mb-2 h-7 w-7 text-muted-foreground" />
+
+            <p className="font-bold">
+              {isArabic
+                ? "لم تسجل المعلمة الحضور لهذه الحصة بعد"
+                : "Attendance has not been recorded for this lesson yet"}
+            </p>
+
+          </div>
+
+        ) : (
+          <>
+            {/* SUMMARY */}
+
+            <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+
+              <div className="rounded-xl border p-3 text-center">
+                <div className="text-xl font-black">
+                  {presentCount}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  {isArabic ? "حاضرات" : "Present"}
+                </div>
+              </div>
+
+              <div className="rounded-xl border p-3 text-center">
+                <div className="text-xl font-black">
+                  {absentCount}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  {isArabic ? "غائبات" : "Absent"}
+                </div>
+              </div>
+
+              <div className="rounded-xl border p-3 text-center">
+                <div className="text-xl font-black">
+                  {lateCount}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  {isArabic ? "متأخرات" : "Late"}
+                </div>
+              </div>
+
+              <div className="rounded-xl border p-3 text-center">
+                <div className="text-xl font-black">
+                  {needsSupportCount}
+                </div>
+
+                <div className="text-xs text-muted-foreground">
+                  {isArabic
+                    ? "يحتجن دعمًا"
+                    : "Need Support"}
+                </div>
+              </div>
+
+            </div>
+
+            {/* STUDENTS */}
+
+            <div className="space-y-2">
+
+              {rows.map((row, index) => (
+                <div
+                  key={row.id}
+                  className="grid gap-3 rounded-xl border p-3 md:grid-cols-[1.5fr_1fr_1fr_2fr]"
+                >
+
+                  <div>
+                    <div className="text-[10px] font-bold text-muted-foreground">
+                      {isArabic ? "الطالبة" : "Student"}
+                    </div>
+
+                    <div className="font-bold">
+                      {index + 1}.{" "}
+                      {getStudentName(row.students)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-bold text-muted-foreground">
+                      {isArabic ? "الحضور" : "Attendance"}
+                    </div>
+
+                    <div className="text-sm font-semibold">
+                      {attendanceLabel(row.status)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-bold text-muted-foreground">
+                      {isArabic
+                        ? "مستوى الفهم"
+                        : "Understanding"}
+                    </div>
+
+                    <div className="text-sm font-semibold">
+                      {understandingLabel(
+                        row.understanding_level,
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-[10px] font-bold text-muted-foreground">
+                      {isArabic
+                        ? "التغذية الراجعة"
+                        : "Feedback"}
+                    </div>
+
+                    <div className="text-sm">
+                      {row.feedback || "—"}
+                    </div>
+                  </div>
+
+                </div>
+              ))}
+
+            </div>
+          </>
+        )}
+
       </div>
     </div>
   );

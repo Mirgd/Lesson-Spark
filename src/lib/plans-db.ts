@@ -289,21 +289,15 @@ export function rowToBundle(row: PlanRow | OpenPlanRow): PlanBundle {
 
       subject: row.subject ?? "",
 
-grade: row.grade ?? "",
+      grade: row.grade ?? "",
 
-topic: row.topic ?? "",
+      topic: row.topic ?? "",
 
-classId:
-  "class_id" in row
-    ? row.class_id ?? ""
-    : "",
+      classId: "class_id" in row ? (row.class_id ?? "") : "",
 
-scheduledDate:
-  "scheduled_date" in row
-    ? row.scheduled_date ?? ""
-    : "",
+      scheduledDate: "scheduled_date" in row ? (row.scheduled_date ?? "") : "",
 
-objectives: row.objectives ?? "",
+      objectives: row.objectives ?? "",
       contentLanguage: normalizeLang(
         (
           row as {
@@ -487,11 +481,7 @@ export async function deletePlan(id: string) {
    DUPLICATE PLAN
 ========================================================= */
 
-export async function duplicatePlan(
-  id: string,
-  newClassId?: string,
-  newScheduledDate?: string,
-) {
+export async function duplicatePlan(id: string, newClassId?: string, newScheduledDate?: string) {
   const row = await getPlan(id);
 
   if (!row) {

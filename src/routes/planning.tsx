@@ -110,26 +110,26 @@ function Planning() {
 
         return;
       } catch (error) {
-  console.error("SAVE PLAN ERROR:", error);
+        console.error("SAVE PLAN ERROR:", error);
 
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" && error !== null && "message" in error
-        ? String((error as { message?: unknown }).message)
-        : String(error);
+        const message =
+          error instanceof Error
+            ? error.message
+            : typeof error === "object" && error !== null && "message" in error
+              ? String((error as { message?: unknown }).message)
+              : String(error);
 
-  toast.error(
-    isArabic
-      ? `تعذّر حفظ الخطة في الحساب: ${message}`
-      : `Unable to save the plan: ${message}`,
-    {
-      duration: 10000,
-    },
-  );
+        toast.error(
+          isArabic
+            ? `تعذّر حفظ الخطة في الحساب: ${message}`
+            : `Unable to save the plan: ${message}`,
+          {
+            duration: 10000,
+          },
+        );
 
-  return;
-}
+        return;
+      }
     }
 
     toast.success(isArabic ? "تم حفظ الخطة" : "Plan saved successfully.");

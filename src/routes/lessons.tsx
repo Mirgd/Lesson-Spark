@@ -1,26 +1,16 @@
 import { useUiLanguage } from "@/lib/ui-language";
-
 import {
-  createFileRoute,
-  Link,
-  useNavigate,
-} from "@tanstack/react-router";
+  listPlanReviews,
+  type PlanReviewRow,
+} from "@/lib/supervision";
+
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 
 import { supabase } from "@/integrations/supabase/client";
 
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
+import { useCallback, useEffect, useState } from "react";
 
-import {
-  Copy,
-  Trash2,
-  FolderOpen,
-  Loader2,
-  Users,
-} from "lucide-react";
+import { Copy, Trash2, FolderOpen, Loader2, Users } from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -40,16 +30,9 @@ import { NewLessonButton } from "@/components/NewLessonButton";
 
 import { downloadLessonPdf } from "@/lib/lesson-files";
 
-import {
-  extractPdfAsImages,
-  setLastPdfFile,
-  getCurrentFileId,
-} from "@/lib/pdf-images";
+import { extractPdfAsImages, setLastPdfFile, getCurrentFileId } from "@/lib/pdf-images";
 
-import {
-  clearPageImages,
-  putPageImage,
-} from "@/lib/presentation";
+import { clearPageImages, putPageImage } from "@/lib/presentation";
 
 /* =========================================================
    TYPES
@@ -163,26 +146,22 @@ export const Route = createFileRoute("/lessons")({
   head: () => ({
     meta: [
       {
-        title:
-          "دروسي — المدرسة الرمز · التعلم العميق",
+        title: "دروسي — المدرسة الرمز · التعلم العميق",
       },
 
       {
         name: "description",
-        content:
-          "دروسك المحفوظة في حسابك فقط.",
+        content: "دروسك المحفوظة في حسابك فقط.",
       },
 
       {
         property: "og:title",
-        content:
-          "دروسي — المدرسة الرمز",
+        content: "دروسي — المدرسة الرمز",
       },
 
       {
         property: "og:description",
-        content:
-          "قائمة خطط الدروس الخاصة بحسابك.",
+        content: "قائمة خطط الدروس الخاصة بحسابك.",
       },
 
       {
@@ -205,105 +184,69 @@ export const Route = createFileRoute("/lessons")({
 ========================================================= */
 
 function Lessons() {
-  const { language } =
-    useUiLanguage();
+  const { language } = useUiLanguage();
 
-  const isArabic =
-    language === "ar";
+  const isArabic = language === "ar";
 
-  const {
-    loading,
-    identity,
-  } = useSession();
+  const { loading, identity } = useSession();
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
   /* =======================================================
      STATE
   ======================================================= */
 
-  const [rows, setRows] =
-    useState<PlanRow[]>([]);
-
-  const [busy, setBusy] =
-    useState(true);
+  const [rows, setRows] = useState<PlanRow[]>([]);
+  const [reviews, setReviews] = useState<PlanReviewRow[]>([]); 
+  const [busy, setBusy] = useState(true);
 
   /*
    * الصف المحدد.
    *
    * all = كل الصفوف.
    */
-  const [
-    selectedGrade,
-    setSelectedGrade,
-  ] = useState<string>("all");
+  const [selectedGrade, setSelectedGrade] = useState<string>("all");
 
   /*
    * الفصل / الشعبة المحددة.
    *
    * all = كل فصول الصف.
    */
-  const [
-    selectedClassId,
-    setSelectedClassId,
-  ] = useState<string>("all");
+  const [selectedClassId, setSelectedClassId] = useState<string>("all");
 
   /*
    * قائمة الفصول من Supabase.
    */
-  const [
-    schoolClasses,
-    setSchoolClasses,
-  ] = useState<SchoolClass[]>([]);
+  const [schoolClasses, setSchoolClasses] = useState<SchoolClass[]>([]);
 
   /*
    * الدرس الذي يتم فتحه.
    */
-  const [
-    openingId,
-    setOpeningId,
-  ] = useState<string | null>(null);
+  const [openingId, setOpeningId] = useState<string | null>(null);
 
   /*
    * نافذة نسخ الخطة.
    */
-  const [
-    copyingPlan,
-    setCopyingPlan,
-  ] = useState<PlanRow | null>(null);
+  const [copyingPlan, setCopyingPlan] = useState<PlanRow | null>(null);
 
-  const [
-    copyClassId,
-    setCopyClassId,
-  ] = useState("");
+  const [copyClassId, setCopyClassId] = useState("");
 
-  const [
-    copyDate,
-    setCopyDate,
-  ] = useState("");
+  const [copyDate, setCopyDate] = useState("");
 
-  const [
-    copying,
-    setCopying,
-  ] = useState(false);
+  const [copying, setCopying] = useState(false);
 
-  const userId =
-    identity?.user.id;
+  const userId = identity?.user.id;
 
   /* =======================================================
      GET GRADE NUMBER FROM OLD TEXT
   ======================================================= */
 
-  const getGradeNumber = (
-    grade?: string | null,
-  ): number | null => {
+  const getGradeNumber = (grade?: string | null): number | null => {
     if (!grade) {
       return null;
     }
 
-    const value =
-      grade.toLowerCase();
+    const value = grade.toLowerCase();
 
     /*
      * English first because:
@@ -312,75 +255,51 @@ function Lessons() {
      * ولذلك نتحقق من 10 و11 و12 أولاً.
      */
 
-    if (
-      value.includes("grade 12")
-    ) {
+    if (value.includes("grade 12")) {
       return 12;
     }
 
-    if (
-      value.includes("grade 11")
-    ) {
+    if (value.includes("grade 11")) {
       return 11;
     }
 
-    if (
-      value.includes("grade 10")
-    ) {
+    if (value.includes("grade 10")) {
       return 10;
     }
 
-    if (
-      value.includes("grade 9")
-    ) {
+    if (value.includes("grade 9")) {
       return 9;
     }
 
-    if (
-      value.includes("grade 8")
-    ) {
+    if (value.includes("grade 8")) {
       return 8;
     }
 
-    if (
-      value.includes("grade 7")
-    ) {
+    if (value.includes("grade 7")) {
       return 7;
     }
 
-    if (
-      value.includes("grade 6")
-    ) {
+    if (value.includes("grade 6")) {
       return 6;
     }
 
-    if (
-      value.includes("grade 5")
-    ) {
+    if (value.includes("grade 5")) {
       return 5;
     }
 
-    if (
-      value.includes("grade 4")
-    ) {
+    if (value.includes("grade 4")) {
       return 4;
     }
 
-    if (
-      value.includes("grade 3")
-    ) {
+    if (value.includes("grade 3")) {
       return 3;
     }
 
-    if (
-      value.includes("grade 2")
-    ) {
+    if (value.includes("grade 2")) {
       return 2;
     }
 
-    if (
-      value.includes("grade 1")
-    ) {
+    if (value.includes("grade 1")) {
       return 1;
     }
 
@@ -388,81 +307,51 @@ function Lessons() {
      * Arabic.
      */
 
-    if (
-      value.includes("الثالث ثانوي") ||
-      value.includes("الثالث الثانوي")
-    ) {
+    if (value.includes("الثالث ثانوي") || value.includes("الثالث الثانوي")) {
       return 12;
     }
 
-    if (
-      value.includes("الثاني ثانوي") ||
-      value.includes("الثاني الثانوي")
-    ) {
+    if (value.includes("الثاني ثانوي") || value.includes("الثاني الثانوي")) {
       return 11;
     }
 
-    if (
-      value.includes("الأول ثانوي") ||
-      value.includes("الأول الثانوي")
-    ) {
+    if (value.includes("الأول ثانوي") || value.includes("الأول الثانوي")) {
       return 10;
     }
 
-    if (
-      value.includes("الثالث متوسط") ||
-      value.includes("الثالث المتوسط")
-    ) {
+    if (value.includes("الثالث متوسط") || value.includes("الثالث المتوسط")) {
       return 9;
     }
 
-    if (
-      value.includes("الثاني متوسط") ||
-      value.includes("الثاني المتوسط")
-    ) {
+    if (value.includes("الثاني متوسط") || value.includes("الثاني المتوسط")) {
       return 8;
     }
 
-    if (
-      value.includes("الأول متوسط") ||
-      value.includes("الأول المتوسط")
-    ) {
+    if (value.includes("الأول متوسط") || value.includes("الأول المتوسط")) {
       return 7;
     }
 
-    if (
-      value.includes("السادس")
-    ) {
+    if (value.includes("السادس")) {
       return 6;
     }
 
-    if (
-      value.includes("الخامس")
-    ) {
+    if (value.includes("الخامس")) {
       return 5;
     }
 
-    if (
-      value.includes("الرابع")
-    ) {
+    if (value.includes("الرابع")) {
       return 4;
     }
 
-    if (
-      value.includes("الثالث")
-    ) {
+    if (value.includes("الثالث")) {
       return 3;
     }
 
-    if (
-      value.includes("الثاني")
-    ) {
+    if (value.includes("الثاني")) {
       return 2;
     }
 
-    if (
-      value.includes("الأول")
-    ) {
+    if (value.includes("الأول")) {
       return 1;
     }
 
@@ -482,20 +371,11 @@ function Lessons() {
    *
    * ولا نعتمد على grade القديم داخل الخطة.
    */
-  const getRowGradeNumber = (
-    row: PlanRow,
-  ): number | null => {
+  const getRowGradeNumber = (row: PlanRow): number | null => {
     if (row.class_id) {
-      const schoolClass =
-        schoolClasses.find(
-          (item) =>
-            item.id ===
-            row.class_id,
-        );
+      const schoolClass = schoolClasses.find((item) => item.id === row.class_id);
 
-      if (
-        schoolClass?.grade_number
-      ) {
+      if (schoolClass?.grade_number) {
         return schoolClass.grade_number;
       }
     }
@@ -504,18 +384,14 @@ function Lessons() {
      * fallback للخطط القديمة
      * التي لم يكن لها class_id.
      */
-    return getGradeNumber(
-      row.grade,
-    );
+    return getGradeNumber(row.grade);
   };
 
   /* =======================================================
      GRADE LABEL
   ======================================================= */
 
-  const getGradeLabel = (
-    gradeNumber: number | null,
-  ) => {
+  const getGradeLabel = (gradeNumber: number | null) => {
     if (!gradeNumber) {
       return "—";
     }
@@ -588,44 +464,26 @@ function Lessons() {
       },
     };
 
-    return isArabic
-      ? labels[gradeNumber]?.ar ??
-          "—"
-      : labels[gradeNumber]?.en ??
-          "—";
+    return isArabic ? (labels[gradeNumber]?.ar ?? "—") : (labels[gradeNumber]?.en ?? "—");
   };
 
   /* =======================================================
      FILTER BY GRADE
   ======================================================= */
 
-  const gradeFilteredRows:
-    PlanRow[] =
+  const gradeFilteredRows: PlanRow[] =
     selectedGrade === "all"
       ? rows
-      : rows.filter(
-          (row) =>
-            getRowGradeNumber(
-              row,
-            ) ===
-            Number(
-              selectedGrade,
-            ),
-        );
+      : rows.filter((row) => getRowGradeNumber(row) === Number(selectedGrade));
 
   /* =======================================================
      FILTER BY CLASS
   ======================================================= */
 
-  const filteredRows:
-    PlanRow[] =
+  const filteredRows: PlanRow[] =
     selectedClassId === "all"
       ? gradeFilteredRows
-      : gradeFilteredRows.filter(
-          (row) =>
-            row.class_id ===
-            selectedClassId,
-        );
+      : gradeFilteredRows.filter((row) => row.class_id === selectedClassId);
 
   /* =======================================================
      CLASSES FOR SELECTED GRADE
@@ -634,112 +492,66 @@ function Lessons() {
   const classesForSelectedGrade =
     selectedGrade === "all"
       ? []
-      : schoolClasses.filter(
-          (schoolClass) =>
-            schoolClass.grade_number ===
-            Number(
-              selectedGrade,
-            ),
-        );
+      : schoolClasses.filter((schoolClass) => schoolClass.grade_number === Number(selectedGrade));
 
   /* =======================================================
      COUNTS
   ======================================================= */
 
-  const getGradeLessonCount = (
-    gradeNumber: number,
-  ) => {
-    return rows.filter(
-      (row) =>
-        getRowGradeNumber(
-          row,
-        ) === gradeNumber,
-    ).length;
+  const getGradeLessonCount = (gradeNumber: number) => {
+    return rows.filter((row) => getRowGradeNumber(row) === gradeNumber).length;
   };
 
-  const getClassLessonCount = (
-    classId: string,
-  ) => {
-    return gradeFilteredRows.filter(
-      (row) =>
-        row.class_id ===
-        classId,
-    ).length;
+  const getClassLessonCount = (classId: string) => {
+    return gradeFilteredRows.filter((row) => row.class_id === classId).length;
   };
 
   /* =======================================================
      REFRESH
   ======================================================= */
 
-  const refresh =
-    useCallback(async () => {
-      if (!userId) {
-        return;
+  const refresh = useCallback(async () => {
+    if (!userId) {
+      return;
+    }
+
+    try {
+      /*
+       * نجلب الخطط والفصول معاً.
+       */
+      const [plans, classesResult, reviewRows] = await Promise.all([
+  listPlans(),
+
+  (supabase as any)
+    .from("school_classes")
+    .select("id, name_ar, name_en, grade_number, section"),
+
+  listPlanReviews(),
+]);
+
+setRows(plans);
+setReviews(reviewRows);
+
+if (!classesResult.error) {
+  setSchoolClasses(
+    (classesResult.data ?? []) as SchoolClass[],
+  );
+}
+
+
+      if (classesResult.error) {
+        console.error("Unable to load school classes:", classesResult.error);
+      } else {
+        setSchoolClasses((classesResult.data ?? []) as SchoolClass[]);
       }
-
-      try {
-        /*
-         * نجلب الخطط والفصول معاً.
-         */
-        const [
-          plans,
-          classesResult,
-        ] = await Promise.all([
-          listPlans(),
-
-          (supabase as any)
-            .from(
-              "school_classes",
-            )
-            .select(
-              "id, name_ar, name_en, grade_number, section",
-            )
-            .order(
-              "grade_number",
-              {
-                ascending: true,
-              },
-            )
-            .order(
-              "section",
-              {
-                ascending: true,
-              },
-            ),
-        ]);
-
-        setRows(plans);
-
-        if (
-          classesResult.error
-        ) {
-          console.error(
-            "Unable to load school classes:",
-            classesResult.error,
-          );
-        } else {
-          setSchoolClasses(
-            (
-              classesResult.data ??
-              []
-            ) as SchoolClass[],
-          );
-        }
-      } catch (e) {
-        toast.error(
-          e instanceof Error
-            ? e.message
-            : isArabic
-              ? "تعذّر تحميل الدروس"
-              : "Unable to load lessons",
-        );
-      } finally {
-        setBusy(false);
-      }
-    }, [
-      userId,
-      isArabic,
-    ]);
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : isArabic ? "تعذّر تحميل الدروس" : "Unable to load lessons",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }, [userId, isArabic]);
 
   /* =======================================================
      INITIAL LOAD
@@ -751,154 +563,96 @@ function Lessons() {
     }
 
     if (!userId) {
-      window.location.replace(
-        "/auth",
-      );
+      window.location.replace("/auth");
 
       return;
     }
 
     void refresh();
-  }, [
-    loading,
-    userId,
-    refresh,
-  ]);
+  }, [loading, userId, refresh]);
 
   /* =======================================================
      CLASS NAME
   ======================================================= */
 
-  const getClassName = (
-    classId?: string | null,
-  ) => {
+  const getClassName = (classId?: string | null) => {
     if (!classId) {
       return "";
     }
 
-    const schoolClass =
-      schoolClasses.find(
-        (item) =>
-          item.id === classId,
-      );
+    const schoolClass = schoolClasses.find((item) => item.id === classId);
 
     if (!schoolClass) {
       return "";
     }
 
-    return isArabic
-      ? schoolClass.name_ar
-      : schoolClass.name_en ||
-          schoolClass.name_ar;
+    return isArabic ? schoolClass.name_ar : schoolClass.name_en || schoolClass.name_ar;
   };
 
   /* =======================================================
      FORMAT LESSON DATE
   ======================================================= */
 
-  const formatLessonDate = (
-    dateValue?: string | null,
-  ) => {
+  const formatLessonDate = (dateValue?: string | null) => {
     if (!dateValue) {
       return "";
     }
 
-    const date =
-      new Date(
-        `${dateValue}T12:00:00`,
-      );
+    const date = new Date(`${dateValue}T12:00:00`);
 
-    return new Intl.DateTimeFormat(
-      isArabic
-        ? "ar-SA"
-        : "en-US",
-      {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      },
-    ).format(date);
+    return new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
   };
 
   /* =======================================================
      RESTORE CURRICULUM
   ======================================================= */
 
-  const restoreCurriculumFile =
-    async (
-      curriculumFilePath: string,
-    ) => {
-      const file =
-        await downloadLessonPdf(
-          curriculumFilePath,
-        );
+  const restoreCurriculumFile = async (curriculumFilePath: string) => {
+    const file = await downloadLessonPdf(curriculumFilePath);
 
-      setLastPdfFile(file);
+    setLastPdfFile(file);
 
-      const fileId =
-        getCurrentFileId();
+    const fileId = getCurrentFileId();
 
-      /*
-       * حالياً 15 صفحة كما كان
-       * في الملف الأصلي.
-       */
-      const pages =
-        await extractPdfAsImages(
-          file,
-          15,
-        );
+    /*
+     * حالياً 15 صفحة كما كان
+     * في الملف الأصلي.
+     */
+    const pages = await extractPdfAsImages(file, 15);
 
-      await clearPageImages();
+    await clearPageImages();
 
-      for (
-        const page of pages
-      ) {
-        await putPageImage(
-          page.page,
-          page.dataUrl,
-          fileId,
-        );
-      }
-    };
+    for (const page of pages) {
+      await putPageImage(page.page, page.dataUrl, fileId);
+    }
+  };
 
   /* =======================================================
      OPEN LESSON
   ======================================================= */
 
-  const open = async (
-    row: PlanRow,
-  ) => {
+  const open = async (row: PlanRow) => {
     setOpeningId(row.id);
 
     try {
-      const fresh =
-        await getPlan(
-          row.id,
-        );
+      const fresh = await getPlan(row.id);
 
       if (!fresh) {
-        toast.error(
-          isArabic
-            ? "لم يتم العثور على الخطة"
-            : "Lesson plan not found",
-        );
+        toast.error(isArabic ? "لم يتم العثور على الخطة" : "Lesson plan not found");
 
         return;
       }
 
-      const bundle =
-        rowToBundle(
-          fresh,
-        );
+      const bundle = rowToBundle(fresh);
 
-      applyBundleLocally(
-        bundle,
-      );
+      applyBundleLocally(bundle);
 
-      if (
-        bundle.curriculumFilePath
-      ) {
+      if (bundle.curriculumFilePath) {
         try {
           toast.info(
             isArabic
@@ -906,16 +660,9 @@ function Lessons() {
               : "Restoring curriculum file and book pages...",
           );
 
-          await restoreCurriculumFile(
-            bundle.curriculumFilePath,
-          );
-        } catch (
-          fileError
-        ) {
-          console.error(
-            "Unable to restore curriculum PDF:",
-            fileError,
-          );
+          await restoreCurriculumFile(bundle.curriculumFilePath);
+        } catch (fileError) {
+          console.error("Unable to restore curriculum PDF:", fileError);
 
           toast.warning(
             isArabic
@@ -924,9 +671,7 @@ function Lessons() {
           );
         }
       } else {
-        console.info(
-          `Plan ${row.id} has no stored curriculum PDF.`,
-        );
+        console.info(`Plan ${row.id} has no stored curriculum PDF.`);
       }
 
       navigate({
@@ -934,11 +679,7 @@ function Lessons() {
       });
     } catch (e) {
       toast.error(
-        e instanceof Error
-          ? e.message
-          : isArabic
-            ? "تعذّر فتح الدرس"
-            : "Unable to open the lesson",
+        e instanceof Error ? e.message : isArabic ? "تعذّر فتح الدرس" : "Unable to open the lesson",
       );
     } finally {
       setOpeningId(null);
@@ -949,92 +690,37 @@ function Lessons() {
      DUPLICATE
   ======================================================= */
 
-  const duplicate =
-    async () => {
-      if (!copyingPlan) {
-        return;
-      }
+  const duplicate = async () => {
+    if (!copyingPlan) {
+      return;
+    }
 
-      if (!copyClassId) {
-        toast.error(
-          isArabic
-            ? "اختاري الفصل أو الشعبة الجديدة"
-            : "Please select the new class",
-        );
+    if (!copyClassId) {
+      toast.error(isArabic ? "اختاري الفصل أو الشعبة الجديدة" : "Please select the new class");
 
-        return;
-      }
+      return;
+    }
 
-      if (!copyDate) {
-        toast.error(
-          isArabic
-            ? "اختاري تاريخ الحصة الجديدة"
-            : "Please select the new lesson date",
-        );
+    if (!copyDate) {
+      toast.error(isArabic ? "اختاري تاريخ الحصة الجديدة" : "Please select the new lesson date");
 
-        return;
-      }
+      return;
+    }
 
-      try {
-        setCopying(true);
-
-        await duplicatePlan(
-          copyingPlan.id,
-          copyClassId,
-          copyDate,
-        );
-
-        toast.success(
-          isArabic
-            ? "تم إنشاء نسخة جديدة من الخطة"
-            : "A new copy of the lesson was created",
-        );
-
-        setCopyingPlan(
-          null,
-        );
-
-        setCopyClassId(
-          "",
-        );
-
-        setCopyDate(
-          "",
-        );
-
-        await refresh();
-      } catch (e) {
-        toast.error(
-          e instanceof Error
-            ? e.message
-            : isArabic
-              ? "تعذّر نسخ الخطة"
-              : "Unable to duplicate the lesson",
-        );
-      } finally {
-        setCopying(
-          false,
-        );
-      }
-    };
-
-  /* =======================================================
-     DELETE
-  ======================================================= */
-
-  const remove = async (
-    row: PlanRow,
-  ) => {
     try {
-      await deletePlan(
-        row.id,
-      );
+      setCopying(true);
+
+      await duplicatePlan(copyingPlan.id, copyClassId, copyDate);
 
       toast.success(
-        isArabic
-          ? "تم الحذف"
-          : "Lesson deleted successfully",
+        isArabic ? "تم إنشاء نسخة جديدة من الخطة" : "A new copy of the lesson was created",
       );
+
+      setCopyingPlan(null);
+
+      setCopyClassId("");
+
+      setCopyDate("");
 
       await refresh();
     } catch (e) {
@@ -1042,8 +728,28 @@ function Lessons() {
         e instanceof Error
           ? e.message
           : isArabic
-            ? "تعذّر الحذف"
-            : "Unable to delete the lesson",
+            ? "تعذّر نسخ الخطة"
+            : "Unable to duplicate the lesson",
+      );
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  /* =======================================================
+     DELETE
+  ======================================================= */
+
+  const remove = async (row: PlanRow) => {
+    try {
+      await deletePlan(row.id);
+
+      toast.success(isArabic ? "تم الحذف" : "Lesson deleted successfully");
+
+      await refresh();
+    } catch (e) {
+      toast.error(
+        e instanceof Error ? e.message : isArabic ? "تعذّر الحذف" : "Unable to delete the lesson",
       );
     }
   };
@@ -1052,10 +758,7 @@ function Lessons() {
      LOADING
   ======================================================= */
 
-  if (
-    loading ||
-    busy
-  ) {
+  if (loading || busy) {
     return (
       <main className="flex min-h-[50vh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -1069,38 +772,23 @@ function Lessons() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-
       {/* ===================================================
           HEADER
       =================================================== */}
 
       <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
-
         <div>
-
-          <h1 className="text-3xl font-black text-primary">
-            {isArabic
-              ? "دروسي"
-              : "My Lessons"}
-          </h1>
+          <h1 className="text-3xl font-black text-primary">{isArabic ? "دروسي" : "My Lessons"}</h1>
 
           <p className="mt-1 text-sm text-muted-foreground">
-            {isArabic
-              ? "دروسك المحفوظة في حسابك."
-              : "Your saved lessons in your account."}
+            {isArabic ? "دروسك المحفوظة في حسابك." : "Your saved lessons in your account."}
           </p>
-
         </div>
 
         <NewLessonButton
           variant="primary"
-          label={
-            isArabic
-              ? "ابدأ درساً جديداً"
-              : "Start a New Lesson"
-          }
+          label={isArabic ? "ابدأ درساً جديداً" : "Start a New Lesson"}
         />
-
       </header>
 
       {/* ===================================================
@@ -1108,163 +796,97 @@ function Lessons() {
       =================================================== */}
 
       <div className="mb-4 rounded-2xl border bg-background p-3">
-
         <div className="mb-2 text-xs font-bold text-muted-foreground">
-          {isArabic
-            ? "تصفية الدروس حسب الصف"
-            : "Filter lessons by grade"}
+          {isArabic ? "تصفية الدروس حسب الصف" : "Filter lessons by grade"}
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {GRADE_TABS.map((grade) => {
+            const count =
+              grade.value === "all" ? rows.length : getGradeLessonCount(Number(grade.value));
 
-          {GRADE_TABS.map(
-            (grade) => {
-              const count =
-                grade.value ===
-                "all"
-                  ? rows.length
-                  : getGradeLessonCount(
-                      Number(
-                        grade.value,
-                      ),
-                    );
+            return (
+              <button
+                key={grade.value}
+                type="button"
+                onClick={() => {
+                  setSelectedGrade(grade.value);
 
-              return (
-                <button
-                  key={
-                    grade.value
-                  }
-                  type="button"
-                  onClick={() => {
-                    setSelectedGrade(
-                      grade.value,
-                    );
-
-                    /*
-                     * عند تغيير الصف:
-                     * نلغي فلتر الفصل السابق.
-                     */
-                    setSelectedClassId(
-                      "all",
-                    );
-                  }}
-                  className={
-                    selectedGrade ===
-                    grade.value
-                      ? "rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-                      : "rounded-full border bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
-                  }
-                >
-                  {isArabic
-                    ? grade.ar
-                    : grade.en}{" "}
-                  ({count})
-                </button>
-              );
-            },
-          )}
-
+                  /*
+                   * عند تغيير الصف:
+                   * نلغي فلتر الفصل السابق.
+                   */
+                  setSelectedClassId("all");
+                }}
+                className={
+                  selectedGrade === grade.value
+                    ? "rounded-full bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+                    : "rounded-full border bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
+                }
+              >
+                {isArabic ? grade.ar : grade.en} ({count})
+              </button>
+            );
+          })}
         </div>
-
       </div>
 
       {/* ===================================================
           CLASS / SECTION FILTER
       =================================================== */}
 
-      {selectedGrade !==
-        "all" &&
-        classesForSelectedGrade.length >
-          0 && (
-          <div className="mb-6 rounded-2xl border bg-muted/30 p-3">
-
-            <div className="mb-2 text-xs font-bold text-muted-foreground">
-              {isArabic
-                ? "تصفية حسب الفصل / الشعبة"
-                : "Filter by Class / Section"}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-
-              {/* ALL CLASSES */}
-
-              <button
-                type="button"
-                onClick={() =>
-                  setSelectedClassId(
-                    "all",
-                  )
-                }
-                className={
-                  selectedClassId ===
-                  "all"
-                    ? "rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
-                    : "rounded-lg border bg-background px-3 py-2 text-sm hover:bg-accent"
-                }
-              >
-                {isArabic
-                  ? "كل الفصول"
-                  : "All Classes"}{" "}
-                (
-                {
-                  gradeFilteredRows.length
-                }
-                )
-              </button>
-
-              {/* EACH CLASS */}
-
-              {classesForSelectedGrade.map(
-                (
-                  schoolClass,
-                ) => {
-                  const count =
-                    getClassLessonCount(
-                      schoolClass.id,
-                    );
-
-                  return (
-                    <button
-                      key={
-                        schoolClass.id
-                      }
-                      type="button"
-                      onClick={() =>
-                        setSelectedClassId(
-                          schoolClass.id,
-                        )
-                      }
-                      className={
-                        selectedClassId ===
-                        schoolClass.id
-                          ? "rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
-                          : "rounded-lg border bg-background px-3 py-2 text-sm hover:bg-accent"
-                      }
-                    >
-                      {isArabic
-                        ? schoolClass.name_ar
-                        : schoolClass.name_en ||
-                          schoolClass.name_ar}{" "}
-                      ({count})
-                    </button>
-                  );
-                },
-              )}
-
-            </div>
-
+      {selectedGrade !== "all" && classesForSelectedGrade.length > 0 && (
+        <div className="mb-6 rounded-2xl border bg-muted/30 p-3">
+          <div className="mb-2 text-xs font-bold text-muted-foreground">
+            {isArabic ? "تصفية حسب الفصل / الشعبة" : "Filter by Class / Section"}
           </div>
-        )}
+
+          <div className="flex flex-wrap gap-2">
+            {/* ALL CLASSES */}
+
+            <button
+              type="button"
+              onClick={() => setSelectedClassId("all")}
+              className={
+                selectedClassId === "all"
+                  ? "rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
+                  : "rounded-lg border bg-background px-3 py-2 text-sm hover:bg-accent"
+              }
+            >
+              {isArabic ? "كل الفصول" : "All Classes"} ({gradeFilteredRows.length})
+            </button>
+
+            {/* EACH CLASS */}
+
+            {classesForSelectedGrade.map((schoolClass) => {
+              const count = getClassLessonCount(schoolClass.id);
+
+              return (
+                <button
+                  key={schoolClass.id}
+                  type="button"
+                  onClick={() => setSelectedClassId(schoolClass.id)}
+                  className={
+                    selectedClassId === schoolClass.id
+                      ? "rounded-lg bg-primary px-3 py-2 text-sm font-bold text-primary-foreground"
+                      : "rounded-lg border bg-background px-3 py-2 text-sm hover:bg-accent"
+                  }
+                >
+                  {isArabic ? schoolClass.name_ar : schoolClass.name_en || schoolClass.name_ar} (
+                  {count})
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* ===================================================
           EMPTY
       =================================================== */}
 
-      {filteredRows.length ===
-      0 ? (
-
+      {filteredRows.length === 0 ? (
         <div className="card-elevated p-10 text-center">
-
           <p className="text-lg font-medium">
             {rows.length === 0
               ? isArabic
@@ -1285,181 +907,212 @@ function Lessons() {
                 : "Choose another grade or class."}
           </p>
 
-          {rows.length ===
-            0 && (
+          {rows.length === 0 && (
             <Link
               to="/planning"
               className="mt-5 inline-block rounded-lg bg-primary px-5 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
             >
-              {isArabic
-                ? "ابدأ التخطيط"
-                : "Start Planning"}
+              {isArabic ? "ابدأ التخطيط" : "Start Planning"}
             </Link>
           )}
-
         </div>
-
       ) : (
-
         /* =================================================
            CARDS
         ================================================= */
 
         <div className="grid gap-3">
+          {filteredRows.map((r: PlanRow) => {
+            const isOpening = openingId === r.id;
+            const planReviews = reviews.filter(
+  (review) => review.plan_id === r.id,
+);
 
-          {filteredRows.map(
-            (
-              r: PlanRow,
-            ) => {
-              const isOpening =
-                openingId ===
-                r.id;
+const averageRating =
+  planReviews.length > 0
+    ? (
+        planReviews.reduce(
+          (sum, review) => sum + review.rating,
+          0,
+        ) / planReviews.length
+      ).toFixed(1)
+    : null; 
+            const actualGradeNumber = getRowGradeNumber(r);
 
-              const actualGradeNumber =
-                getRowGradeNumber(
-                  r,
-                );
-
-              return (
-                <div
-                  key={r.id}
-                  className="card-elevated flex flex-wrap items-center gap-3 p-4"
-                >
-
-                  {/* =============================
+            return (
+              <div key={r.id} className="card-elevated flex flex-wrap items-center gap-3 p-4">
+                {/* =============================
                       INFO
                   ============================= */}
 
-                  <div className="min-w-0 flex-1">
-
-                    <div className="truncate font-bold text-primary">
-                      {r.topic ||
-                        (isArabic
-                          ? "بدون موضوع"
-                          : "Untitled Lesson")}
-                    </div>
-
-                    <div className="text-xs text-muted-foreground">
-                      {r.subject ||
-                        "—"}{" "}
-                      ·{" "}
-                      {getGradeLabel(
-                        actualGradeNumber,
-                      )}
-                    </div>
-
-                    {/* CLASS */}
-
-                    {r.class_id && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        🏫{" "}
-                        {getClassName(
-                          r.class_id,
-                        )}
-                      </div>
-                    )}
-
-                    {/* DATE */}
-
-                    {r.scheduled_date && (
-                      <div className="mt-1 text-xs text-muted-foreground">
-                        📅{" "}
-                        {formatLessonDate(
-                          r.scheduled_date,
-                        )}
-                      </div>
-                    )}
-
-                    {/* CURRICULUM */}
-
-                    {r.curriculum_file_path && (
-                      <div className="mt-1 text-[11px] text-green-700">
-                        {isArabic
-                          ? "📎 ملف المقرر محفوظ"
-                          : "📎 Curriculum file saved"}
-                      </div>
-                    )}
-
+                <div className="min-w-0 flex-1">
+                  <div className="truncate font-bold text-primary">
+                    {r.topic || (isArabic ? "بدون موضوع" : "Untitled Lesson")}
                   </div>
 
-                  {/* OPEN */}
+                  <div className="text-xs text-muted-foreground">
+                    {r.subject || "—"} · {getGradeLabel(actualGradeNumber)}
+                  </div>
 
-<button
-  type="button"
-  onClick={() => void open(r)}
-  disabled={openingId !== null}
-  className={btnGhost}
->
-  {isOpening ? (
-    <Loader2 className="h-4 w-4 animate-spin" />
-  ) : (
-    <FolderOpen className="h-4 w-4" />
-  )}
+                  {/* CLASS */}
 
-  {isOpening
-    ? isArabic
-      ? "جارٍ الفتح..."
-      : "Opening..."
-    : isArabic
-      ? "فتح"
-      : "Open"}
-</button>
+                  {r.class_id && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      🏫 {getClassName(r.class_id)}
+                    </div>
+                  )}
 
-{/* ATTENDANCE */}
+                  {/* DATE */}
 
-<Link
-  to="/attendance/$lessonId"
-  params={{
-    lessonId: r.id,
-  }}
-  className={btnGhost}
->
-  <Users className="h-4 w-4" />
+                  {r.scheduled_date && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      📅 {formatLessonDate(r.scheduled_date)}
+                    </div>
+                  )}
+                  {/* ملف المقرر */}
+{r.curriculum_file_path && (
+  <div className="mt-2 text-[11px] text-green-700">
+    {isArabic
+      ? "📎 ملف المقرر محفوظ"
+      : "📎 Curriculum file saved"}
+  </div>
+)}
 
-  {isArabic
-    ? "الحضور والمتابعة"
-    : "Attendance"}
-</Link>
+{/* تقييم المشرفة */}
+                  {planReviews.length > 0 && (
+  <div className="mt-3 rounded-xl border border-gold/30 bg-gold/5 p-3">
 
-{/* COPY */}
+    <div className="flex flex-wrap items-center justify-between gap-2">
 
-<button
-  type="button"
-  onClick={() => {
-    setCopyingPlan(r);
-    setCopyClassId(r.class_id ?? "");
-    setCopyDate(r.scheduled_date ?? "");
-  }}
-  disabled={openingId !== null}
-  className={btnGhost}
->
-  <Copy className="h-4 w-4" />
+      <div className="font-bold text-primary">
+        ⭐{" "}
+        {isArabic
+          ? "تقييم المشرفة"
+          : "Supervisor Review"}
+      </div>
 
-  {isArabic
-    ? "نسخ"
-    : "Duplicate"}
-</button>
+      {averageRating && (
+        <div className="rounded-full bg-gold/15 px-2.5 py-1 text-xs font-black text-gold">
+          {averageRating}/5
+        </div>
+      )}
 
-{/* DELETE */}
+    </div>
 
-<button
-  type="button"
-  onClick={() => void remove(r)}
-  disabled={openingId !== null}
-  className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
->
-  <Trash2 className="h-4 w-4" />
+    <div className="mt-2 space-y-2">
 
-  {isArabic
-    ? "حذف"
-    : "Delete"}
-</button>
+      {planReviews.map((review) => (
+        <div
+          key={review.id}
+          className="rounded-lg border bg-background/70 p-2"
+        >
 
-                </div>
-              );
-            },
+          <div className="text-sm font-bold">
+            {"★".repeat(review.rating)}
+            {"☆".repeat(5 - review.rating)}
+          </div>
+
+          {review.comment ? (
+            <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">
+              {review.comment}
+            </p>
+          ) : (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {isArabic
+                ? "لم تضف المشرفة ملاحظة."
+                : "No written comment was added."}
+            </p>
           )}
 
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            {isArabic ? "تاريخ التقييم: " : "Reviewed: "}
+            {new Date(review.updated_at || review.created_at).toLocaleDateString(
+              isArabic ? "ar-SA" : "en-US",
+            )}
+          </p>
+
+        </div>
+      ))}
+
+    </div>
+
+  </div>
+)}
+
+                  {/* CURRICULUM */}
+
+                  
+                </div>
+
+                {/* OPEN */}
+
+                <button
+                  type="button"
+                  onClick={() => void open(r)}
+                  disabled={openingId !== null}
+                  className={btnGhost}
+                >
+                  {isOpening ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <FolderOpen className="h-4 w-4" />
+                  )}
+
+                  {isOpening
+                    ? isArabic
+                      ? "جارٍ الفتح..."
+                      : "Opening..."
+                    : isArabic
+                      ? "فتح"
+                      : "Open"}
+                </button>
+
+                {/* ATTENDANCE */}
+
+                <Link
+                  to="/attendance/$lessonId"
+                  params={{
+                    lessonId: r.id,
+                  }}
+                  className={btnGhost}
+                >
+                  <Users className="h-4 w-4" />
+
+                  {isArabic ? "الحضور والمتابعة" : "Attendance"}
+                </Link>
+
+                {/* COPY */}
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCopyingPlan(r);
+                    setCopyClassId(r.class_id ?? "");
+                    setCopyDate(r.scheduled_date ?? "");
+                  }}
+                  disabled={openingId !== null}
+                  className={btnGhost}
+                >
+                  <Copy className="h-4 w-4" />
+
+                  {isArabic ? "نسخ" : "Duplicate"}
+                </button>
+
+                {/* DELETE */}
+
+                <button
+                  type="button"
+                  onClick={() => void remove(r)}
+                  disabled={openingId !== null}
+                  className="inline-flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm font-medium text-destructive hover:bg-destructive/10 disabled:opacity-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+
+                  {isArabic ? "حذف" : "Delete"}
+                </button>
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -1469,78 +1122,38 @@ function Lessons() {
 
       {copyingPlan && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-
           <div className="w-full max-w-md rounded-2xl bg-background p-6 shadow-xl">
-
             <h2 className="text-xl font-black text-primary">
-              {isArabic
-                ? "نسخ الخطة إلى حصة جديدة"
-                : "Duplicate Lesson"}
+              {isArabic ? "نسخ الخطة إلى حصة جديدة" : "Duplicate Lesson"}
             </h2>
 
             <p className="mt-2 text-sm text-muted-foreground">
-              {copyingPlan.topic ||
-                (isArabic
-                  ? "خطة بدون عنوان"
-                  : "Untitled lesson")}
+              {copyingPlan.topic || (isArabic ? "خطة بدون عنوان" : "Untitled lesson")}
             </p>
 
             <div className="mt-5 space-y-4">
-
               {/* =============================
                   CLASS
               ============================= */}
 
               <div>
-
                 <label className="mb-1 block text-sm font-bold">
-                  {isArabic
-                    ? "الفصل / الشعبة الجديدة"
-                    : "New Class / Section"}
+                  {isArabic ? "الفصل / الشعبة الجديدة" : "New Class / Section"}
                 </label>
 
                 <select
-                  value={
-                    copyClassId
-                  }
-                  onChange={(
-                    e,
-                  ) =>
-                    setCopyClassId(
-                      e.target.value,
-                    )
-                  }
+                  value={copyClassId}
+                  onChange={(e) => setCopyClassId(e.target.value)}
                   className="w-full rounded-lg border bg-background px-3 py-2"
                 >
+                  <option value="">{isArabic ? "اختاري الفصل" : "Select Class"}</option>
 
-                  <option value="">
-                    {isArabic
-                      ? "اختاري الفصل"
-                      : "Select Class"}
-                  </option>
-
-                  {schoolClasses.map(
-                    (
-                      schoolClass,
-                    ) => (
-                      <option
-                        key={
-                          schoolClass.id
-                        }
-                        value={
-                          schoolClass.id
-                        }
-                      >
-                        {isArabic
-                          ? schoolClass.name_ar
-                          : schoolClass.name_en ||
-                            schoolClass.name_ar}
-                      </option>
-                    ),
-                  )}
-
+                  {schoolClasses.map((schoolClass) => (
+                    <option key={schoolClass.id} value={schoolClass.id}>
+                      {isArabic ? schoolClass.name_ar : schoolClass.name_en || schoolClass.name_ar}
+                    </option>
+                  ))}
                 </select>
-
               </div>
 
               {/* =============================
@@ -1548,26 +1161,16 @@ function Lessons() {
               ============================= */}
 
               <div>
-
                 <label className="mb-1 block text-sm font-bold">
-                  {isArabic
-                    ? "تاريخ الحصة الجديدة"
-                    : "New Lesson Date"}
+                  {isArabic ? "تاريخ الحصة الجديدة" : "New Lesson Date"}
                 </label>
 
                 <input
                   type="date"
                   value={copyDate}
-                  onChange={(
-                    e,
-                  ) =>
-                    setCopyDate(
-                      e.target.value,
-                    )
-                  }
+                  onChange={(e) => setCopyDate(e.target.value)}
                   className="w-full rounded-lg border bg-background px-3 py-2"
                 />
-
               </div>
 
               {/* =============================
@@ -1576,30 +1179,13 @@ function Lessons() {
 
               {copyDate && (
                 <div className="rounded-lg bg-muted px-3 py-2 text-sm">
+                  <span className="font-bold">{isArabic ? "اليوم: " : "Day: "}</span>
 
-                  <span className="font-bold">
-                    {isArabic
-                      ? "اليوم: "
-                      : "Day: "}
-                  </span>
-
-                  {new Intl.DateTimeFormat(
-                    isArabic
-                      ? "ar-SA"
-                      : "en-US",
-                    {
-                      weekday:
-                        "long",
-                    },
-                  ).format(
-                    new Date(
-                      `${copyDate}T12:00:00`,
-                    ),
-                  )}
-
+                  {new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-US", {
+                    weekday: "long",
+                  }).format(new Date(`${copyDate}T12:00:00`))}
                 </div>
               )}
-
             </div>
 
             {/* =============================
@@ -1607,45 +1193,27 @@ function Lessons() {
             ============================= */}
 
             <div className="mt-6 flex justify-end gap-2">
-
               <button
                 type="button"
-                disabled={
-                  copying
-                }
+                disabled={copying}
                 onClick={() => {
-                  setCopyingPlan(
-                    null,
-                  );
+                  setCopyingPlan(null);
 
-                  setCopyClassId(
-                    "",
-                  );
+                  setCopyClassId("");
 
-                  setCopyDate(
-                    "",
-                  );
+                  setCopyDate("");
                 }}
-                className={
-                  btnGhost
-                }
+                className={btnGhost}
               >
-                {isArabic
-                  ? "إلغاء"
-                  : "Cancel"}
+                {isArabic ? "إلغاء" : "Cancel"}
               </button>
 
               <button
                 type="button"
-                disabled={
-                  copying
-                }
-                onClick={() =>
-                  void duplicate()
-                }
+                disabled={copying}
+                onClick={() => void duplicate()}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
               >
-
                 {copying
                   ? isArabic
                     ? "جارٍ إنشاء النسخة..."
@@ -1653,16 +1221,11 @@ function Lessons() {
                   : isArabic
                     ? "إنشاء النسخة"
                     : "Create Copy"}
-
               </button>
-
             </div>
-
           </div>
-
         </div>
       )}
-
     </main>
   );
 }

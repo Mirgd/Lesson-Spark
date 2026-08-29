@@ -42,8 +42,7 @@ function AttendancePage() {
 
   const [lesson, setLesson] = useState<PlanRow | null>(null);
 
-  const [schoolClass, setSchoolClass] =
-    useState<SchoolClass | null>(null);
+  const [schoolClass, setSchoolClass] = useState<SchoolClass | null>(null);
 
   const [loading, setLoading] = useState(true);
 
@@ -62,11 +61,7 @@ function AttendancePage() {
         const row = await getPlan(lessonId);
 
         if (!row) {
-          toast.error(
-            isArabic
-              ? "لم يتم العثور على الخطة"
-              : "Lesson plan not found",
-          );
+          toast.error(isArabic ? "لم يتم العثور على الخطة" : "Lesson plan not found");
 
           return;
         }
@@ -80,9 +75,7 @@ function AttendancePage() {
         if (row.class_id) {
           const { data, error } = await (supabase as any)
             .from("school_classes")
-            .select(
-              "id, name_ar, name_en, grade_number, section",
-            )
+            .select("id, name_ar, name_en, grade_number, section")
             .eq("id", row.class_id)
             .maybeSingle();
 
@@ -97,11 +90,7 @@ function AttendancePage() {
       } catch (error) {
         console.error("LOAD ATTENDANCE PAGE ERROR:", error);
 
-        toast.error(
-          isArabic
-            ? "تعذّر تحميل بيانات الحصة"
-            : "Unable to load lesson data",
-        );
+        toast.error(isArabic ? "تعذّر تحميل بيانات الحصة" : "Unable to load lesson data");
       } finally {
         setLoading(false);
       }
@@ -121,15 +110,12 @@ function AttendancePage() {
 
     const date = new Date(`${dateValue}T12:00:00`);
 
-    return new Intl.DateTimeFormat(
-      isArabic ? "ar-SA" : "en-US",
-      {
-        weekday: "long",
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-      },
-    ).format(date);
+    return new Intl.DateTimeFormat(isArabic ? "ar-SA" : "en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(date);
   };
 
   /* =======================================================
@@ -143,9 +129,7 @@ function AttendancePage() {
           <Loader2 className="mx-auto h-7 w-7 animate-spin text-primary" />
 
           <p className="mt-3 text-sm text-muted-foreground">
-            {isArabic
-              ? "جارٍ تحميل الحضور..."
-              : "Loading attendance..."}
+            {isArabic ? "جارٍ تحميل الحضور..." : "Loading attendance..."}
           </p>
         </div>
       </main>
@@ -161,9 +145,7 @@ function AttendancePage() {
       <main className="mx-auto max-w-5xl px-4 py-10">
         <div className="rounded-2xl border bg-background p-8 text-center">
           <h1 className="text-xl font-black">
-            {isArabic
-              ? "لم يتم العثور على الحصة"
-              : "Lesson not found"}
+            {isArabic ? "لم يتم العثور على الحصة" : "Lesson not found"}
           </h1>
 
           <Link
@@ -182,10 +164,7 @@ function AttendancePage() {
   ======================================================= */
 
   return (
-    <main
-      className="mx-auto max-w-6xl px-4 py-8"
-      dir={isArabic ? "rtl" : "ltr"}
-    >
+    <main className="mx-auto max-w-6xl px-4 py-8" dir={isArabic ? "rtl" : "ltr"}>
       {/* ===================================================
           BACK
       =================================================== */}
@@ -195,11 +174,7 @@ function AttendancePage() {
           to="/lessons"
           className="inline-flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm font-bold hover:bg-accent"
         >
-          <ArrowLeft
-            className={`h-4 w-4 ${
-              isArabic ? "rotate-180" : ""
-            }`}
-          />
+          <ArrowLeft className={`h-4 w-4 ${isArabic ? "rotate-180" : ""}`} />
 
           {isArabic ? "العودة إلى دروسي" : "Back to My Lessons"}
         </Link>
@@ -212,32 +187,24 @@ function AttendancePage() {
       <section className="mb-6 rounded-2xl border bg-background p-5">
         <div>
           <p className="text-sm font-bold text-primary">
-            {isArabic
-              ? "الحضور والمتابعة"
-              : "Attendance & Feedback"}
+            {isArabic ? "الحضور والمتابعة" : "Attendance & Feedback"}
           </p>
 
           <h1 className="mt-1 text-2xl font-black">
-            {lesson.topic ||
-              (isArabic ? "بدون عنوان" : "Untitled Lesson")}
+            {lesson.topic || (isArabic ? "بدون عنوان" : "Untitled Lesson")}
           </h1>
 
           {/* SUBJECT */}
 
           {lesson.subject && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              📘 {lesson.subject}
-            </div>
+            <div className="mt-2 text-sm text-muted-foreground">📘 {lesson.subject}</div>
           )}
 
           {/* CLASS */}
 
           {schoolClass && (
             <div className="mt-1 text-sm text-muted-foreground">
-              🏫{" "}
-              {isArabic
-                ? schoolClass.name_ar
-                : schoolClass.name_en || schoolClass.name_ar}
+              🏫 {isArabic ? schoolClass.name_ar : schoolClass.name_en || schoolClass.name_ar}
             </div>
           )}
 
@@ -258,9 +225,7 @@ function AttendancePage() {
       {!lesson.class_id ? (
         <div className="rounded-2xl border border-amber-300 bg-amber-50 p-6 text-center">
           <h2 className="font-black text-amber-900">
-            {isArabic
-              ? "لم يتم تحديد فصل لهذه الحصة"
-              : "No class has been assigned to this lesson"}
+            {isArabic ? "لم يتم تحديد فصل لهذه الحصة" : "No class has been assigned to this lesson"}
           </h2>
 
           <p className="mt-2 text-sm text-amber-800">
@@ -274,10 +239,7 @@ function AttendancePage() {
            ATTENDANCE TRACKER
         ================================================= */
 
-        <AttendanceTracker
-          lessonPlanId={lesson.id}
-          classId={lesson.class_id}
-        />
+        <AttendanceTracker lessonPlanId={lesson.id} classId={lesson.class_id} />
       )}
     </main>
   );
